@@ -2,6 +2,8 @@ bin
 build
 .vs
 */.vs
+*.user
+*.aps
 # Compiled Object files
 *.slo
 *.lo
