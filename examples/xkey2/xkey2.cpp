@@ -121,27 +121,33 @@ WarkeyDlg::WarkeyDlg()
   { // create widgets on the panel
     auto panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
         wxTRANSPARENT_WINDOW | wxTAB_TRAVERSAL | wxNO_BORDER);
+#if 0
     auto vertbox = new wxBoxSizer(wxVERTICAL);
     auto horzbox1 = new wxBoxSizer(wxHORIZONTAL);
     auto horzbox2 = new wxBoxSizer(wxVERTICAL);
     horzbox1->Add(new wxPanel(panel, wxID_ANY));
-    //vertbox->Add(horzbox1, 1, wxEXPAND);
     vertbox->Add(horzbox1, wxSizerFlags(1).Expand());
-    //vertbox->Add(horzbox2, 0, wxALIGN_RIGHT | wxRIGHT | wxBOTTOM, 8);
     vertbox->Add(horzbox2, wxSizerFlags(0).Align(wxALIGN_RIGHT).Border(wxALL, 8));
     panel->SetSizer(vertbox);
-    //wxPoint pos(8, 8);
     auto exit_btn = new wxButton(panel, ID_EXIT, wxT("E&xit"));
     exit_btn->SetFocus();
     horzbox2->Add(exit_btn);
-    horzbox1->Add(new wxButton(panel, wxID_OK, wxT("Ok")),
-        wxSizerFlags(1).Center());
-    horzbox1->Add(new wxButton(panel, wxID_CANCEL, wxT("Cancel")), 
-        wxSizerFlags(0).Center());
-    horzbox1->Add(new wxButton(panel, wxID_YES, wxT("Yes")), 
-        wxSizerFlags(1).Top().Border(wxTOP, 64));
-    horzbox1->Add(new wxButton(panel, wxID_NO, wxT("No")), 
-        wxSizerFlags(1).Bottom());
+#endif
+    //horzbox1->Add(new wxButton(panel, wxID_OK, wxT("Ok")),
+    //    wxSizerFlags(1).Center());
+    //horzbox1->Add(new wxButton(panel, wxID_CANCEL, wxT("Cancel")), 
+    //    wxSizerFlags(0).Center());
+    //horzbox1->Add(new wxButton(panel, wxID_YES, wxT("Yes")), 
+    //    wxSizerFlags(1).Top().Border(wxTOP, 64));
+    //horzbox1->Add(new wxButton(panel, wxID_NO, wxT("No")), 
+    //    wxSizerFlags(1).Bottom());
+    auto sbox2 = new wxBoxSizer(wxHORIZONTAL);
+    auto sbox = new wxBoxSizer(wxVERTICAL);
+    sbox2->Add(new wxPanel(), wxSizerFlags(1).Expand());
+    sbox2->Add(sbox, wxSizerFlags(0).Bottom());
+    panel->SetSizer(sbox2);
+    sbox->Add(new wxButton(panel, ID_EXIT, wxT("E&xit")), 
+        wxSizerFlags(1).Right().Border(wxALL, 8));
   }
 
 /*
