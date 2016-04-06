@@ -75,30 +75,45 @@ WarkeyDlg::WarkeyDlg() : wxDialog() {
   SetCursor(cursor);
 
   // create widgets on the panel
-#if 0
-  auto panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
-      wxTRANSPARENT_WINDOW | wxTAB_TRAVERSAL | wxNO_BORDER);
-  auto sbox2 = new wxBoxSizer(wxHORIZONTAL);
-  auto sbox = new wxBoxSizer(wxVERTICAL);
-  sbox2->Add(new wxPanel(panel), wxSizerFlags(1).Expand());
-  sbox2->Add(sbox, wxSizerFlags(1).Bottom());
-  panel->SetSizer(sbox2);
-  sbox->Add(new wxButton(panel, ID_EXIT, wxT("E&xit")), 
-      wxSizerFlags(1).Right().Border(wxALL, 8));
-  sbox2->Add(new wxStaticText(panel, wxID_ANY, wxT("Warcraft III kbd&&mouse hook")), 
-      wxSizerFlags(1).Bottom());
-#endif
-  //auto top_panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
-  //    wxTRANSPARENT_WINDOW | wxTAB_TRAVERSAL | wxNO_BORDER);
-  //auto bottom_panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
-  //    wxTRANSPARENT_WINDOW | wxTAB_TRAVERSAL | wxNO_BORDER);
-  auto bs = new wxBoxSizer(wxHORIZONTAL);
-  auto bs2 = new wxBoxSizer(wxVERTICAL);
-  SetSizer(bs);
-  bs->Add(bs2, wxSizerFlags(1).Bottom());
-  //bs->Add(top_panel, wxSizerFlags(1));
-  //bs->Add(bottom_panel, wxSizerFlags(1));
-  bs2->Add(new wxButton(this, ID_EXIT, wxT("E&xit")), 
+  auto root_szr = new wxBoxSizer(wxHORIZONTAL);
+  auto left_szr = new wxBoxSizer(wxVERTICAL);
+  auto exit_szr = new wxBoxSizer(wxVERTICAL);
+  auto numpad_szr1 = new wxBoxSizer(wxVERTICAL);
+  auto numpad_szr2 = new wxBoxSizer(wxVERTICAL);
+  SetSizer(root_szr);
+  left_szr->Add(new wxPanel(this));
+  root_szr->Add(left_szr, wxSizerFlags(1));
+  wxSizerFlags np_szr_flags(wxSizerFlags(1).Center().Border(wxALL, 8));
+  root_szr->Add(numpad_szr1, wxSizerFlags(1).Center());
+  //numpad_szr1->Add(new wxTextCtrl(this, wxID_ANY, wxT("3")), np_szr_flags);
+  //numpad_szr1->Add(new wxTextCtrl(this, wxID_ANY, wxT("5")), np_szr_flags);
+  //numpad_szr1->Add(new wxTextCtrl(this, wxID_ANY, wxT("7")), np_szr_flags);
+  for (int i = 1; i < 6; i += 2) {
+    auto hszr = new wxBoxSizer(wxHORIZONTAL);
+    numpad_szr1->Add(hszr, wxSizerFlags(1));
+    wxString label;
+    label << "NumPad " << i;
+    hszr->Add(new wxStaticText(this, wxID_ANY, label), 
+        wxSizerFlags(0).Center().Border(wxLEFT | wxTOP | wxBOTTOM, 8));
+    hszr->Add(new wxTextCtrl(this, wxID_ANY, wxT("0")), 
+        wxSizerFlags(0).Center().Border(wxALL, 8));
+  }
+  root_szr->Add(numpad_szr2, wxSizerFlags(1).Center());
+  //numpad_szr2->Add(new wxTextCtrl(this, wxID_ANY, wxT("2")), np_szr_flags);
+  //numpad_szr2->Add(new wxTextCtrl(this, wxID_ANY, wxT("4")), np_szr_flags);
+  //numpad_szr2->Add(new wxTextCtrl(this, wxID_ANY, wxT("6")), np_szr_flags);
+  for (int i = 2; i < 7; i += 2) {
+    auto hszr = new wxBoxSizer(wxHORIZONTAL);
+    numpad_szr2->Add(hszr, wxSizerFlags(1));
+    wxString label;
+    label << "NumPad " << i;
+    hszr->Add(new wxStaticText(this, wxID_ANY, label), 
+        wxSizerFlags(0).Center().Border(wxLEFT | wxTOP | wxBOTTOM, 8));
+    hszr->Add(new wxTextCtrl(this, wxID_ANY, wxT("0")), 
+        wxSizerFlags(0).Center().Border(wxALL, 8));
+  }
+  root_szr->Add(exit_szr, wxSizerFlags(1).Bottom());
+  exit_szr->Add(new wxButton(this, ID_EXIT, wxT("E&xit")), 
       wxSizerFlags(0).Right().Border(wxALL, 8));
 
   Centre();
