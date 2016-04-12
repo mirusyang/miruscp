@@ -19,6 +19,7 @@
 
 enum CtrlId {
   ID_EXIT,
+  ID_ENABLED,
 };
 
 class XKeyApp : public wxApp {
@@ -35,8 +36,25 @@ class WarkeyDlg : public wxDialog {
   void OnKeyUp(wxKeyEvent&);
   void OnExit(wxCommandEvent&);
   void OnPaint(wxPaintEvent&);
+  void OnMotion(wxMouseEvent&);
+  void OnLeftDown(wxMouseEvent&);
+  void OnAbout(wxCommandEvent&);
+  void OnEnabled(wxCommandEvent&);
 
   wxBitmap bkgnd_;
+  wxPoint orig_wnd_pos_;      //!< original window position(screen) before dragging.
+  wxPoint orig_mouse_pos_;    //!< original mouse position(screen) before dragging.
+
+  wxDECLARE_EVENT_TABLE();
+};
+
+class AboutDlg : public wxDialog {
+ public:
+  ~AboutDlg();
+  AboutDlg(wxWindow*);
+
+ private:
+  void OnLeftUp(wxMouseEvent&);
 
   wxDECLARE_EVENT_TABLE();
 };
@@ -58,6 +76,8 @@ bool XKeyApp::OnInit() {
 
   return false;
 }
+
+//////////////////////////////////////////////////
 
 WarkeyDlg::~WarkeyDlg() { }
 
@@ -81,7 +101,7 @@ WarkeyDlg::WarkeyDlg() : wxDialog() {
   //    wxTRANSPARENT), wxSizerFlags(1).Expand());
   top_szr->Add(new wxPanel(this), wxSizerFlags(1));
   //auto top_part0 = new wxBoxSizer(wxVERTICAL);
-  top_szr->Add(new wxCheckBox(this, wxID_ANY, wxT("Enabled")), 
+  top_szr->Add(new wxCheckBox(this, ID_ENABLED, wxT("Enabled")), 
       wxSizerFlags(1).Center().Border(wxBOTTOM | wxLEFT, 16));
   //top_szr->Add(top_part0);
   root_szr->Add(top_szr, wxSizerFlags(1));
@@ -125,6 +145,10 @@ wxBEGIN_EVENT_TABLE(WarkeyDlg, wxDialog)
   EVT_KEY_UP(OnKeyUp)
   EVT_BUTTON(ID_EXIT, OnExit)
   EVT_PAINT(OnPaint)
+  EVT_MOTION(OnMotion)
+  EVT_LEFT_DOWN(OnLeftDown)
+  EVT_BUTTON(wxID_ABOUT, OnAbout)
+  EVT_CHECKBOX(ID_ENABLED, OnEnabled)
 wxEND_EVENT_TABLE()
 
 void WarkeyDlg::OnKeyUp(wxKeyEvent &keyevt) {
@@ -141,6 +165,58 @@ void WarkeyDlg::OnExit(wxCommandEvent &evt) {
 void WarkeyDlg::OnPaint(wxPaintEvent &evt) {
   wxPaintDC dc(this);
   dc.DrawBitmap(bkgnd_, 0, 0);
+}
+
+void WarkeyDlg::OnMotion(wxMouseEvent &evt) {
+  if (evt.LeftIsDown() && evt.Dragging()) {
+    wxPoint target_pos(evt.GetPosition());
+    auto delta = target_pos - orig_mouse_pos_;
+    orig_wnd_pos_ += delta;
+    Move(orig_wnd_pos_);
+  }
+}
+
+void WarkeyDlg::OnLeftDown(wxMouseEvent &evt) {
+  orig_wnd_pos_ = GetScreenPosition();
+  orig_mouse_pos_ = evt.GetPosition();
+}
+
+void WarkeyDlg::OnAbout(wxCommandEvent&) {
+  AboutDlg dlg(this);
+  dlg.ShowModal();
+}
+
+void WarkeyDlg::OnEnabled(wxCommandEvent& evt) {
+  // TODO: OnEanbled, do the function switch.
+  if (evt.IsChecked()) {
+    wxMessageBox(wxT("Ouch! You hit me!!"));
+  }
+}
+
+//////////////////////////////////////////////////
+
+AboutDlg::~AboutDlg() { }
+
+AboutDlg::AboutDlg(wxWindow *parent) 
+    : wxDialog(parent, wxID_ABOUT, wxT(""), wxDefaultPosition, wxDefaultSize, 
+          wxPOPUP_WINDOW) { 
+  auto vbox = new wxBoxSizer(wxHORIZONTAL);
+  auto hbox = new wxBoxSizer(wxVERTICAL);
+  hbox->Add(new wxStaticText(this, wxID_ANY, wxT("Copyright 2016, MiRusY. Y's Personal Toolkit")), 
+      wxSizerFlags(1).Centre().Border(wxALL, 8));
+  vbox->Add(hbox, wxSizerFlags(1).Centre());
+  SetSizer(vbox);
+  Centre();
+}
+
+wxBEGIN_EVENT_TABLE(AboutDlg, wxDialog)
+  EVT_LEFT_UP(OnLeftUp)
+wxEND_EVENT_TABLE()
+
+void AboutDlg::OnLeftUp(wxMouseEvent& evt) {
+  //evt.Skip(false);
+  //evt.StopPropagation();
+  Close();
 }
 
 wxIMPLEMENT_APP(XKeyApp);
