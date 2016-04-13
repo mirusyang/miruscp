@@ -20,6 +20,7 @@
 #ifdef XK_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <tchar.h>
 #endif
 #include <map>
 #include <memory>
@@ -36,26 +37,94 @@ KbdModInterface::~KbdModInterface() {
 
 class WarkeyModifier : public KbdModInterface {
  public:
+  static LRESULT CALLBACK KbdLowLevelProc(int, WPARAM, LPARAM);
+
   ~WarkeyModifier();
   bool Initialise(unsigned long);
   void Release();
 
-  WarkeyModifier();
+  WarkeyModifier(HINSTANCE);
+
+ private:
+  static HHOOK kbd_hook;
+  HINSTANCE handle_;
 };
 
+HHOOK WarkeyModifier::kbd_hook(nullptr);
+
+LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM lparam) {
+/*
+    // Sample code from the old project 'xkeyutil'.
+    KeyMap km = {0};
+    {
+      std::lock_guard<std::mutex> guardian(keymap_mut);
+      int i(kbd->vkCode & 0xFF);
+      km.vksrc = keymap[i].vksrc;
+      km.vktar = keymap[i].vktar;
+    }
+    if (0 != km.vksrc) {
+      if (0 == km.vktar) {
+        // It is eaten.
+        return 1;
+      } else {
+        if (0 != km.vktar && kInvalidTimestamp != kbd->time) {
+          const UINT kNumSent(1);
+          INPUT inputs = {0};
+          INPUT *inp = &inputs;
+          inp->type = INPUT_KEYBOARD;
+          inp->ki.wVk = km.vktar;
+          inp->ki.wScan = MapVirtualKeyEx(km.vktar, MAPVK_VK_TO_VSC, 0);
+          inp->ki.dwFlags = kbd->flags & LLKHF_UP ? KEYEVENTF_KEYUP : 0;
+          inp->ki.time = kInvalidTimestamp; // This is self modification.
+          inp->ki.dwExtraInfo = GetMessageExtraInfo(); 
+          auto retv = SendInput(kNumSent, inp, sizeof(INPUT));
+          if (kNumSent != retv) {
+            LOG(debug) << "SendInput returns " << retv << ",GetLastError:"
+                << GetLastError();
+          }
+          return 1;
+        }
+      }
+    }
+*/
+  try {
+    if (HC_ACTION != code) {
+      throw;
+    }
+    auto kbd((LPKBDLLHOOKSTRUCT)lparam);
+    if (!kbd) {
+      throw;
+    }
+    auto vkcode = kbd->vkCode & 0xFF;
+    TCHAR tip[MAX_PATH] = {0};
+    _stprintf_s(tip, _T("Key pressed: %d"), vkcode);
+    MessageBox(nullptr, tip, _T("Tip(s)"), MB_OK);
+  } catch (...) {
+  }
+  // TODO: KbdLowLevelProc
+  return CallNextHookEx(kbd_hook, code, wparam, lparam);
+}
+
 WarkeyModifier::~WarkeyModifier() {
+  Release();
 }
 
 bool WarkeyModifier::Initialise(unsigned long thread_id) {
+  Release();
+  kbd_hook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdLowLevelProc, handle_, thread_id);
   // TODO: WarkeyModifier::Intialise
-  return false;
+  return nullptr != kbd_hook;
 }
 
 void WarkeyModifier::Release() {
+  if (kbd_hook) {
+    UnhookWindowsHookEx(kbd_hook);
+    kbd_hook = nullptr;
+  }
   // TODO: WarkeyModifier::Release
 }
 
-WarkeyModifier::WarkeyModifier() {
+WarkeyModifier::WarkeyModifier(HINSTANCE inst) : handle_(inst) {
 }
 
 XK_NAMESPACE_END
@@ -80,6 +149,12 @@ struct DllEntryApp {
 
   void set_handle(HANDLE h) {
     handle = h;
+  }
+
+  void set_handle_once(HANDLE h) {
+    if (!handle) {
+      handle = h;
+    }
   }
 
   HANDLE get_handle() const {
@@ -112,7 +187,7 @@ DllEntryApp::DllEntryApp() : DllEntryApp(nullptr) {
 
 KbdModInterface* DllEntryApp::CreateModifierOnce() {
   if (!wkmod) {
-    wkmod.reset(new WarkeyModifier());
+    wkmod.reset(new WarkeyModifier((HINSTANCE)get_handle()));
   }
   return wkmod.get();
 }
@@ -150,7 +225,7 @@ XK_API xk::KbdModInterface* xkGetModifier() {
 XK_CLINKAGE_END 
 
 int WINAPI DllMain(HANDLE dllhandle, DWORD reason, LPVOID reserved) {
-  g_app.set_handle(dllhandle);
+  g_app.set_handle_once(dllhandle);
   return g_app.run(reason, reserved);
 }
 

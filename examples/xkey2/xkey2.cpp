@@ -10,12 +10,55 @@
   \remarks  
 
 */
+//#include <string>
 #include "wx/wxprec.h"
 #ifndef WX_PRECOMP
 #include "wx/wx.h"
 #endif
 #include "wx/gbsizer.h"
 #include "wres/resource.h"
+#include <windows.h>
+#include "../xkbdutil/xkbdutil.h"
+
+struct DllLoader {
+//#if defined(UNICODE) || defined(_UNICODE)
+//typedef std::wstring string;
+//#else
+//typedef std::string string;
+//#endif
+  typedef wxString string;
+
+  ~DllLoader() {
+    if (inst) {
+      FreeLibrary(inst);
+    }
+  }
+
+  DllLoader() : inst(nullptr) {
+  }
+
+  DllLoader(const string &filepath) : DllLoader() {
+    operator()(filepath);
+  }
+
+  bool operator()(const string &filepath) {
+    inst = (HMODULE)LoadLibrary(filepath.c_str());
+    return *this;
+  }
+
+  operator bool() const {
+    return nullptr != inst;
+  }
+
+  template <class Func> Func get_func(const string &name) const {
+    if (!inst) {
+      return nullptr;
+    }
+    return (Func)GetProcAddress(inst, name.c_str());
+  }
+
+  HMODULE inst;
+};
 
 enum CtrlId {
   ID_EXIT,
@@ -25,6 +68,9 @@ enum CtrlId {
 class XKeyApp : public wxApp {
  public:
   bool OnInit();
+
+ private:
+  DllLoader kmod_;
 };
 
 class WarkeyDlg : public wxDialog {
@@ -64,6 +110,39 @@ class AboutDlg : public wxDialog {
 bool XKeyApp::OnInit() {
   if (!wxApp::OnInit()) {
     return false;
+  }
+
+  // load the library here
+  xk::KbdModInterface *kbd_mod(nullptr);
+  bool modloaded(false);
+#ifdef XK_DEBUG
+  modloaded = kmod_(wxT("xkbdutil_d.dll"));
+#else
+  modloaded = kmod_(wxT("xkbdutil.dll"));
+#endif
+  if (!modloaded) {
+    wxString tip;
+    //tip.Format(wxT("Fails to load xkbdutil[_d].dll library!\n")
+    //    wxT(" GetLastError: %d"), GetLastError());
+    tip << wxT("Fails to load xkbdutil[_d].dll library!\n")
+        << wxT(" GetLastError: ") << GetLastError();
+    wxMessageBox(tip, wxT("Caution!!"), wxICON_WARNING | wxOK);
+  } else {
+    auto f = kmod_.get_func<xkGetModifierApi>("xkGetModifier");
+    if (!f) {
+      wxMessageBox(wxT("Fails to get the API address!"));
+    } else {
+      kbd_mod = f();
+    }
+  }
+  if (!kbd_mod) {
+    wxMessageBox(wxT("Please note that the modifier is nil! The library not works well!"),
+        wxT("Caution!!!"), wxICON_WARNING | wxOK);
+  } else {
+    auto initialised = kbd_mod->Initialise(GetCurrentThreadId());
+    if (!initialised) {
+      wxMessageBox(wxT("Fails to initialise the kbd-hook! App may not works well!"));
+    }
   }
 
   // So the wxwidgets lib does the delete job... It's may not be a good idea!

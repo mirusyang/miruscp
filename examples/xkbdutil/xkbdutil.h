@@ -76,7 +76,7 @@
 
 XK_CLINKAGE_BEGIN
 
-// TODO: functions exported here.
+// NOTE: functions exported here.
 
 XK_CLINKAGE_END
 
