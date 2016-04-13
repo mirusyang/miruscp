@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{41695869-52fb-4245-9b69-6226211275d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="winres">
+      <UniqueIdentifier>{a4163bfa-1a55-4dbb-9f71-a4d3cae914b1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\examples\xkbdutil\xkbdutil.cc">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\examples\xkbdutil\wres\resource.h">
+      <Filter>winres</Filter>
+    </ClInclude>
+    <ClInclude Include="..\examples\xkbdutil\xkbdutil.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\examples\xkbdutil\wres\xkbdutil.rc">
+      <Filter>winres</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
