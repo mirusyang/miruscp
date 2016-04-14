@@ -17,48 +17,8 @@
 #endif
 #include "wx/gbsizer.h"
 #include "wres/resource.h"
-#include <windows.h>
+#include "xkit/dlloader.h"
 #include "../xkbdutil/xkbdutil.h"
-
-struct DllLoader {
-//#if defined(UNICODE) || defined(_UNICODE)
-//typedef std::wstring string;
-//#else
-//typedef std::string string;
-//#endif
-  typedef wxString string;
-
-  ~DllLoader() {
-    if (inst) {
-      FreeLibrary(inst);
-    }
-  }
-
-  DllLoader() : inst(nullptr) {
-  }
-
-  DllLoader(const string &filepath) : DllLoader() {
-    operator()(filepath);
-  }
-
-  bool operator()(const string &filepath) {
-    inst = (HMODULE)LoadLibrary(filepath.c_str());
-    return *this;
-  }
-
-  operator bool() const {
-    return nullptr != inst;
-  }
-
-  template <class Func> Func get_func(const string &name) const {
-    if (!inst) {
-      return nullptr;
-    }
-    return (Func)GetProcAddress(inst, name.c_str());
-  }
-
-  HMODULE inst;
-};
 
 enum CtrlId {
   ID_EXIT,
@@ -70,7 +30,7 @@ class XKeyApp : public wxApp {
   bool OnInit();
 
  private:
-  DllLoader kmod_;
+  xk::DllLoader kmod_;
 };
 
 class WarkeyDlg : public wxDialog {

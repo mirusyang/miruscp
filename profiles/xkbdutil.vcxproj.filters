@@ -7,10 +7,19 @@
     <Filter Include="winres">
       <UniqueIdentifier>{a4163bfa-1a55-4dbb-9f71-a4d3cae914b1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="xkit">
+      <UniqueIdentifier>{b4e6fa97-d297-4e55-9daa-669c09d03ff1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{2cc49382-192d-4baf-b4ad-dd3e7eac5820}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\examples\xkbdutil\xkbdutil.cc">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xkit\xktest.cc">
+      <Filter>test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -19,6 +28,24 @@
     </ClInclude>
     <ClInclude Include="..\examples\xkbdutil\xkbdutil.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xkit\dlloader.h">
+      <Filter>xkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xkit\processenumerator.h">
+      <Filter>xkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xkit\winutilities.h">
+      <Filter>xkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xkit\xkitconf.h">
+      <Filter>xkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xkit\adjustprivileges.h">
+      <Filter>xkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xkit\memopatcher.h">
+      <Filter>xkit</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

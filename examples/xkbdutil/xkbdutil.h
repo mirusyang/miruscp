@@ -22,57 +22,7 @@
 #ifndef _XKBDUTIL_H_
 #define _XKBDUTIL_H_
 
-#if defined(_DEBUG) || defined(DEBUG)
-# define XK_DEBUG 
-#endif
-#ifdef _MSC_VER
-# define XK_MSC
-#endif
-
-#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
-# define XK_WIN32 
-#endif
-#if defined(_WIN64) || defined(WIN64) || defined(__WIN64__)
-# define XK_WIN64
-#endif 
-#if defined(XK_WIN32) || defined(XK_WIN64) || defined(_WINDLL)
-# define XK_WINDOWS 
-#endif 
-
-#if defined(_XK_EXPORT_DLL) && defined(_XK_XPORT_LIB)
-#error "Export dll and import or export static lib both not supported!"
-#endif 
-
-#ifdef _XK_EXPORT_DLL
-# define XK_API __declspec(dllexport) 
-#elif defined(_XK_XPORT_LIB)
-# define XK_API 
-#else
-# define XK_API __declspec(dllimport) 
-#endif
-#ifdef _XK_XPORT_LIB
-# define XK_CLINKAGE 
-#else
-# define XK_CLINKAGE extern "C" 
-#endif
-
-#ifdef __cplusplus
-# define XK_CXX 
-#endif 
-
-#ifdef XK_CXX
-# define XK_NAMESPACE_BEGIN namespace xk {
-# define XK_NAMESPACE_END }
-# define XK_CLINKAGE_BEGIN XK_CLINKAGE {
-# define XK_CLINKAGE_END }
-#else
-# define XK_NAMESPACE_BEGIN 
-# define XK_NAMESPACE_END 
-# define XK_CLINKAGE_BEGIN 
-# define XK_CLINKAGE_END 
-#endif 
-
-
+#include "xkit/xkitconf.h"
 
 XK_CLINKAGE_BEGIN
 

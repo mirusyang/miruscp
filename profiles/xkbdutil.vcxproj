@@ -74,22 +74,26 @@
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
+    <IncludePath>../;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
+    <IncludePath>../;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
+    <IncludePath>../;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
+    <IncludePath>../;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -153,10 +157,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\examples\xkbdutil\xkbdutil.cc" />
+    <ClCompile Include="..\xkit\xktest.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\examples\xkbdutil\wres\resource.h" />
     <ClInclude Include="..\examples\xkbdutil\xkbdutil.h" />
+    <ClInclude Include="..\xkit\adjustprivileges.h" />
+    <ClInclude Include="..\xkit\dlloader.h" />
+    <ClInclude Include="..\xkit\memopatcher.h" />
+    <ClInclude Include="..\xkit\processenumerator.h" />
+    <ClInclude Include="..\xkit\winutilities.h" />
+    <ClInclude Include="..\xkit\xkitconf.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\examples\xkbdutil\wres\xkbdutil.rc" />

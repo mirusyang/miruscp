@@ -74,7 +74,7 @@
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
-    <IncludePath>E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
+    <IncludePath>../;E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
     <LibraryPath>E:\Sdks\wx3.1\lib\vc140_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -82,21 +82,21 @@
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
-    <IncludePath>E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
+    <IncludePath>../;E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
     <LibraryPath>E:\Sdks\wx3.1\lib\vc140_x64_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
-    <IncludePath>E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
+    <IncludePath>../;E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
     <LibraryPath>E:\Sdks\wx3.1\lib\vc140_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin/$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)build/$(Configuration)/$(ProjectName)_$(Platform)\</IntDir>
-    <IncludePath>E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
+    <IncludePath>../;E:\Sdks\wx3.1\include\msvc;E:\Sdks\wx3.1\include;$(IncludePath)</IncludePath>
     <LibraryPath>E:\Sdks\wx3.1\lib\vc140_x64_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
