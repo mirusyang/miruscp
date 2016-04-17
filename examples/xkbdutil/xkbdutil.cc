@@ -24,11 +24,62 @@
 #endif
 #include <map>
 #include <memory>
+#include "xkit/winutilities.h"
 #include "wres/resource.h"
 
 using namespace std;
 
 #ifdef XK_WINDOWS
+
+XK_NAMESPACE_BEGIN
+
+struct KbdModInterface;
+class WarkeyModifier;
+
+struct DllEntryApp {
+  typedef int (DllEntryApp::*Entry)(LPVOID);
+
+  ~DllEntryApp();
+  DllEntryApp(HANDLE h);
+  DllEntryApp();
+
+  KbdModInterface* CreateModifierOnce(DWORD);
+
+  int run(DWORD reason, LPVOID reserved) {
+    if (0 != entries.count(reason)) {
+      return (this->*entries[reason])(reserved);
+    }
+    return -1;
+  }
+
+  void set_handle(HANDLE h) {
+    handle = h;
+  }
+
+  void set_handle_once(HANDLE h) {
+    if (!handle) {
+      handle = h;
+    }
+  }
+
+  HANDLE get_handle() const {
+    return handle;
+  }
+
+ private:
+  int ProcessAttach(LPVOID);
+  int ProcessDetach(LPVOID);
+  int ThreadAttach(LPVOID);
+  int ThreadDetach(LPVOID);
+
+  HANDLE handle;
+  map<DWORD, Entry> entries;
+  unique_ptr<WarkeyModifier> wkmod;
+};
+
+XK_NAMESPACE_END 
+
+static xk::DllEntryApp g_app;
 
 XK_NAMESPACE_BEGIN
 
@@ -40,14 +91,13 @@ class WarkeyModifier : public KbdModInterface {
   static LRESULT CALLBACK KbdLowLevelProc(int, WPARAM, LPARAM);
 
   ~WarkeyModifier();
-  bool Initialise(unsigned long);
+  bool Initialise();
   void Release();
 
-  WarkeyModifier(HINSTANCE);
+  WarkeyModifier(DWORD);
 
  private:
   static HHOOK kbd_hook;
-  HINSTANCE handle_;
 };
 
 HHOOK WarkeyModifier::kbd_hook(nullptr);
@@ -106,71 +156,33 @@ LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM
 }
 
 WarkeyModifier::~WarkeyModifier() {
-  Release();
-}
-
-bool WarkeyModifier::Initialise(unsigned long thread_id) {
-  Release();
-  kbd_hook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdLowLevelProc, handle_, thread_id);
-  // TODO: WarkeyModifier::Intialise
-  return nullptr != kbd_hook;
-}
-
-void WarkeyModifier::Release() {
   if (kbd_hook) {
     UnhookWindowsHookEx(kbd_hook);
     kbd_hook = nullptr;
   }
+}
+
+bool WarkeyModifier::Initialise() {
+  return true;
+  // TODO: WarkeyModifier::Intialise
+}
+
+void WarkeyModifier::Release() {
   // TODO: WarkeyModifier::Release
 }
 
-WarkeyModifier::WarkeyModifier(HINSTANCE inst) : handle_(inst) {
+WarkeyModifier::WarkeyModifier(DWORD thread_id) {
+  kbd_hook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdLowLevelProc, 
+      (HINSTANCE)g_app.get_handle(), thread_id);
+  if (!kbd_hook) {
+    auto errstr = fmt_errmsg2(GetLastError());
+    throw RuntimeError(errstr);
+  }
 }
 
 XK_NAMESPACE_END
 
 XK_NAMESPACE_BEGIN
-
-struct DllEntryApp {
-  typedef int (DllEntryApp::*Entry)(LPVOID);
-
-  ~DllEntryApp();
-  DllEntryApp(HANDLE h);
-  DllEntryApp();
-
-  KbdModInterface* CreateModifierOnce();
-
-  int run(DWORD reason, LPVOID reserved) {
-    if (0 != entries.count(reason)) {
-      return (this->*entries[reason])(reserved);
-    }
-    return -1;
-  }
-
-  void set_handle(HANDLE h) {
-    handle = h;
-  }
-
-  void set_handle_once(HANDLE h) {
-    if (!handle) {
-      handle = h;
-    }
-  }
-
-  HANDLE get_handle() const {
-    return handle;
-  }
-
- private:
-  int ProcessAttach(LPVOID);
-  int ProcessDetach(LPVOID);
-  int ThreadAttach(LPVOID);
-  int ThreadDetach(LPVOID);
-
-  HANDLE handle;
-  map<DWORD, Entry> entries;
-  unique_ptr<WarkeyModifier> wkmod;
-};
 
 DllEntryApp::~DllEntryApp() {
 }
@@ -185,9 +197,9 @@ DllEntryApp::DllEntryApp(HANDLE h) : handle(h), wkmod(nullptr) {
 DllEntryApp::DllEntryApp() : DllEntryApp(nullptr) {
 }
 
-KbdModInterface* DllEntryApp::CreateModifierOnce() {
+KbdModInterface* DllEntryApp::CreateModifierOnce(DWORD thread_id) {
   if (!wkmod) {
-    wkmod.reset(new WarkeyModifier((HINSTANCE)get_handle()));
+    wkmod.reset(new WarkeyModifier(thread_id));
   }
   return wkmod.get();
 }
@@ -210,12 +222,10 @@ int DllEntryApp::ThreadDetach(LPVOID) {
 
 XK_NAMESPACE_END 
 
-static xk::DllEntryApp g_app;
-
 XK_CLINKAGE_BEGIN
 
-XK_API xk::KbdModInterface* xkGetModifier() {
-  return g_app.CreateModifierOnce();
+XK_API xk::KbdModInterface* xkGetModifier(DWORD thread_id) {
+  return g_app.CreateModifierOnce(thread_id);
 }
 
 //XK_API void xkRelease(xk::KbdModInterface *kbdmod) {

@@ -34,13 +34,13 @@ XK_NAMESPACE_BEGIN
 
 struct KbdModInterface {
   virtual ~KbdModInterface();
-  virtual bool Initialise(unsigned long) = 0;
+  virtual bool Initialise() = 0;
   virtual void Release() = 0;
 };
 
 XK_NAMESPACE_END
 
-typedef xk::KbdModInterface* (*xkGetModifierApi)();
+typedef xk::KbdModInterface* (*xkGetModifierApi)(unsigned long);
 
 
 #ifdef XK_MSC

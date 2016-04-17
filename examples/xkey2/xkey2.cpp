@@ -18,6 +18,7 @@
 #include "wx/gbsizer.h"
 #include "wres/resource.h"
 #include "xkit/dlloader.h"
+#include "xkit/processenumerator.h"
 #include "../xkbdutil/xkbdutil.h"
 
 enum CtrlId {
@@ -67,7 +68,11 @@ class AboutDlg : public wxDialog {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma region XKeyApp_Impl_BEGIN
+
 bool XKeyApp::OnInit() {
+  using std::exception;
+
   if (!wxApp::OnInit()) {
     return false;
   }
@@ -92,16 +97,23 @@ bool XKeyApp::OnInit() {
     if (!f) {
       wxMessageBox(wxT("Fails to get the API address!"));
     } else {
-      kbd_mod = f();
-    }
-  }
-  if (!kbd_mod) {
-    wxMessageBox(wxT("Please note that the modifier is nil! The library not works well!"),
-        wxT("Caution!!!"), wxICON_WARNING | wxOK);
-  } else {
-    auto initialised = kbd_mod->Initialise(GetCurrentThreadId());
-    if (!initialised) {
-      wxMessageBox(wxT("Fails to initialise the kbd-hook! App may not works well!"));
+      xk::ProcessEnumerator pe;
+      auto war3pid = pe.fuzzy_lookup(_T("war3.exe"));
+      if (0 != war3pid) {
+        MessageBeep(MB_ICONINFORMATION);
+        auto thread_id = GetWindowThreadProcessId(xk::WndEnumerator::Main(war3pid), nullptr);
+        try {
+        thread_id = 0;
+          kbd_mod = f(thread_id);
+          auto initialised = kbd_mod->Initialise();
+          if (!initialised) {
+            wxMessageBox(wxT("Fails to initialise the kbd-hook! App may not works well!"));
+          }
+        } catch (exception &e) {
+          wxMessageBox(e.what());
+        } catch (...) {
+        }
+      }
     }
   }
 
@@ -116,7 +128,11 @@ bool XKeyApp::OnInit() {
   return false;
 }
 
+#pragma endregion XKeyApp_Impl_END
+
 //////////////////////////////////////////////////
+
+#pragma region WarkeyDlg_Impl_Begin
 
 WarkeyDlg::~WarkeyDlg() { }
 
@@ -232,7 +248,11 @@ void WarkeyDlg::OnEnabled(wxCommandEvent& evt) {
   }
 }
 
+#pragma endregion WarkeyDlg_Impl_END
+
 //////////////////////////////////////////////////
+
+#pragma region AboutDlg_Begin
 
 AboutDlg::~AboutDlg() { }
 
@@ -257,5 +277,7 @@ void AboutDlg::OnLeftUp(wxMouseEvent& evt) {
   //evt.StopPropagation();
   Close();
 }
+
+#pragma endregion AboutDlg_END
 
 wxIMPLEMENT_APP(XKeyApp);
