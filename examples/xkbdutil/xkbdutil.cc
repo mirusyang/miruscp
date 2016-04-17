@@ -24,6 +24,7 @@
 #endif
 #include <map>
 #include <memory>
+#include <mutex>
 #include "xkit/winutilities.h"
 #include "wres/resource.h"
 
@@ -87,56 +88,32 @@ KbdModInterface::~KbdModInterface() {
 }
 
 class WarkeyModifier : public KbdModInterface {
+  typedef pair<WORD, WORD> KeyPair;
+
  public:
   static LRESULT CALLBACK KbdLowLevelProc(int, WPARAM, LPARAM);
 
   ~WarkeyModifier();
   bool Initialise();
   void Release();
-
+  void Map(WORD, WORD);
   WarkeyModifier(DWORD);
 
  private:
+  static const DWORD kInvalidTimestamp = 0xDEADBEEF;
+  static const auto kNumKeyPairs = 256;
   static HHOOK kbd_hook;
+  static KeyPair keymap[kNumKeyPairs];
+  static mutex keymap_lock;
 };
 
 HHOOK WarkeyModifier::kbd_hook(nullptr);
 
+WarkeyModifier::KeyPair WarkeyModifier::keymap[WarkeyModifier::kNumKeyPairs];
+
+mutex WarkeyModifier::keymap_lock;
+
 LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM lparam) {
-/*
-    // Sample code from the old project 'xkeyutil'.
-    KeyMap km = {0};
-    {
-      std::lock_guard<std::mutex> guardian(keymap_mut);
-      int i(kbd->vkCode & 0xFF);
-      km.vksrc = keymap[i].vksrc;
-      km.vktar = keymap[i].vktar;
-    }
-    if (0 != km.vksrc) {
-      if (0 == km.vktar) {
-        // It is eaten.
-        return 1;
-      } else {
-        if (0 != km.vktar && kInvalidTimestamp != kbd->time) {
-          const UINT kNumSent(1);
-          INPUT inputs = {0};
-          INPUT *inp = &inputs;
-          inp->type = INPUT_KEYBOARD;
-          inp->ki.wVk = km.vktar;
-          inp->ki.wScan = MapVirtualKeyEx(km.vktar, MAPVK_VK_TO_VSC, 0);
-          inp->ki.dwFlags = kbd->flags & LLKHF_UP ? KEYEVENTF_KEYUP : 0;
-          inp->ki.time = kInvalidTimestamp; // This is self modification.
-          inp->ki.dwExtraInfo = GetMessageExtraInfo(); 
-          auto retv = SendInput(kNumSent, inp, sizeof(INPUT));
-          if (kNumSent != retv) {
-            LOG(debug) << "SendInput returns " << retv << ",GetLastError:"
-                << GetLastError();
-          }
-          return 1;
-        }
-      }
-    }
-*/
   try {
     if (HC_ACTION != code) {
       throw;
@@ -145,10 +122,37 @@ LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM
     if (!kbd) {
       throw;
     }
-    auto vkcode = kbd->vkCode & 0xFF;
-    TCHAR tip[MAX_PATH] = {0};
-    _stprintf_s(tip, _T("Key pressed: %d"), vkcode);
-    MessageBox(nullptr, tip, _T("Tip(s)"), MB_OK);
+    KeyPair km(0, 0);
+    {
+      std::lock_guard<std::mutex> guard(keymap_lock);
+      int i(kbd->vkCode & 0xFF);
+      km.first = keymap[i].first;
+      km.second = keymap[i].second;
+    }
+    if (0 != km.first) {
+      if (0 == km.second) {
+        // It is eaten.
+        return 1;
+      } else {
+        if (0 != km.second && kInvalidTimestamp != kbd->time) {
+          const UINT kNumSent(1);
+          INPUT inputs = {0};
+          INPUT *inp = &inputs;
+          inp->type = INPUT_KEYBOARD;
+          inp->ki.wVk = km.second;
+          inp->ki.wScan = MapVirtualKeyEx(km.second, MAPVK_VK_TO_VSC, 0);
+          inp->ki.dwFlags = kbd->flags & LLKHF_UP ? KEYEVENTF_KEYUP : 0;
+          inp->ki.time = kInvalidTimestamp; // This is self modification.
+          inp->ki.dwExtraInfo = GetMessageExtraInfo(); 
+          auto retv = SendInput(kNumSent, inp, sizeof(INPUT));
+          if (kNumSent != retv) {
+            //LOG(debug) << "SendInput returns " << retv << ",GetLastError:"
+            //    << GetLastError();
+          }
+          return 1;
+        }
+      }
+    }
   } catch (...) {
   }
   // TODO: KbdLowLevelProc
@@ -163,12 +167,21 @@ WarkeyModifier::~WarkeyModifier() {
 }
 
 bool WarkeyModifier::Initialise() {
+  Map(VK_NUMPAD7, 0x34); Map(VK_NUMPAD8, 0x33);
+  Map(VK_NUMPAD4, 0x35); Map(VK_NUMPAD5, 0x38);
+  Map(VK_NUMPAD1, 0x36); Map(VK_NUMPAD2, 0x37);
   return true;
   // TODO: WarkeyModifier::Intialise
 }
 
 void WarkeyModifier::Release() {
   // TODO: WarkeyModifier::Release
+}
+
+void WarkeyModifier::Map(WORD src, WORD target) {
+  std::lock_guard<std::mutex> guardian(keymap_lock);
+  keymap[src].first = (WORD)src;
+  keymap[src].second = (WORD)target;
 }
 
 WarkeyModifier::WarkeyModifier(DWORD thread_id) {
