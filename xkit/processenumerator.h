@@ -180,7 +180,7 @@ struct ThreadEnumerator {
     if (!nextvalid) {
       return 0;
     }
-    nextvalid = Thread32Next(thrdsnap, &thrdentry);
+    nextvalid = FALSE != Thread32Next(thrdsnap, &thrdentry);
     return thrdentry.th32ThreadID;
   }
 

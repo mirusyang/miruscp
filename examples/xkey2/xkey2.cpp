@@ -137,17 +137,17 @@ bool XKeyApp::OnInit() {
 WarkeyDlg::~WarkeyDlg() { }
 
 WarkeyDlg::WarkeyDlg() : wxDialog() {
-  bkgnd_.LoadFile(wxT("res/bkgnd.bmp"), wxBITMAP_TYPE_BMP);
+  bkgnd_.LoadFile(wxT("bkgnd"), wxBITMAP_TYPE_BMP_RESOURCE);
 
-  wxBitmap win_shape("res/bkgnd_mask.bmp", wxBITMAP_TYPE_BMP);
+  wxBitmap win_shape("bkgnd_mask", wxBITMAP_TYPE_BMP_RESOURCE);
   long dlgstyle(0);
   Create(nullptr, wxID_ANY, "Hei", wxDefaultPosition, 
       wxSize(win_shape.GetWidth(), win_shape.GetHeight()), dlgstyle);
-  wxRegion win_region(win_shape, *wxWHITE);
+  wxRegion win_region(win_shape, *wxBLACK);
   SetWindowStyle(GetWindowStyle() | wxFRAME_SHAPED);
   SetShape(win_region);
 
-  wxCursor cursor(wxT("res/b.ani"), wxBITMAP_TYPE_ANI);
+  wxCursor cursor(wxT("main_cursor"), wxBITMAP_TYPE_CUR_RESOURCE);
   SetCursor(cursor);
 
   auto root_szr = new wxBoxSizer(wxVERTICAL);
