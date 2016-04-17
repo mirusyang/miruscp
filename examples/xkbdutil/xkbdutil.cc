@@ -167,9 +167,9 @@ WarkeyModifier::~WarkeyModifier() {
 }
 
 bool WarkeyModifier::Initialise() {
-  Map(VK_NUMPAD7, 0x34); Map(VK_NUMPAD8, 0x33);
-  Map(VK_NUMPAD4, 0x35); Map(VK_NUMPAD5, 0x38);
-  Map(VK_NUMPAD1, 0x36); Map(VK_NUMPAD2, 0x37);
+  Map(0x34, VK_NUMPAD7); Map(0x33, VK_NUMPAD8);
+  Map(0x35, VK_NUMPAD4); Map(0x38, VK_NUMPAD5);
+  Map(0x36, VK_NUMPAD1); Map(0x37, VK_NUMPAD2);
   return true;
   // TODO: WarkeyModifier::Intialise
 }
