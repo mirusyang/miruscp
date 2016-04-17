@@ -23,6 +23,7 @@
 #define _XKBDUTIL_H_
 
 #include "xkit/xkitconf.h"
+#include <cstdint>
 
 XK_CLINKAGE_BEGIN
 
@@ -36,6 +37,7 @@ struct KbdModInterface {
   virtual ~KbdModInterface();
   virtual bool Initialise() = 0;
   virtual void Release() = 0;
+  virtual void Map(uint16_t, uint16_t) = 0;
 };
 
 XK_NAMESPACE_END
