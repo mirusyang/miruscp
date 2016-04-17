@@ -34,8 +34,6 @@ XK_NAMESPACE_BEGIN
 
 struct KbdModInterface {
   virtual ~KbdModInterface();
-  virtual bool Initialise(unsigned long) = 0;
-  virtual void Release() = 0;
 };
 
 XK_NAMESPACE_END

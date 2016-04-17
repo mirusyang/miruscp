@@ -24,6 +24,11 @@
 #endif
 #include <map>
 #include <memory>
+#include <future>
+#include <chrono>
+#include <atomic>
+#include <mutex>
+#include "xkit/processenumerator.h"
 #include "wres/resource.h"
 
 using namespace std;
@@ -32,25 +37,71 @@ using namespace std;
 
 XK_NAMESPACE_BEGIN
 
+struct KbdModInterface;
+class WarkeyModifier;
+
+struct DllEntryApp {
+  typedef int (DllEntryApp::*Entry)(LPVOID);
+
+  ~DllEntryApp();
+  DllEntryApp(HANDLE h);
+  DllEntryApp();
+
+  KbdModInterface* CreateModifierOnce();
+  void Release();
+
+  int run(DWORD reason, LPVOID reserved) {
+    if (0 != entries.count(reason)) {
+      return (this->*entries[reason])(reserved);
+    }
+    return -1;
+  }
+
+  void set_handle(HANDLE h) {
+    handle = h;
+  }
+
+  void set_handle_once(HANDLE h) {
+    if (!handle) {
+      handle = h;
+    }
+  }
+
+  HANDLE get_handle() const {
+    return handle;
+  }
+
+ private:
+  int ProcessAttach(LPVOID);
+  int ProcessDetach(LPVOID);
+  int ThreadAttach(LPVOID);
+  int ThreadDetach(LPVOID);
+
+  HANDLE handle;
+  map<DWORD, Entry> entries;
+  unique_ptr<WarkeyModifier> wkmod;
+};
+
+XK_NAMESPACE_END
+
+static xk::DllEntryApp g_app;
+
+XK_NAMESPACE_BEGIN
+
 KbdModInterface::~KbdModInterface() {
 }
 
-class WarkeyModifier : public KbdModInterface {
- public:
-  static LRESULT CALLBACK KbdLowLevelProc(int, WPARAM, LPARAM);
+struct KbdHook {
+  static LRESULT CALLBACK _Entry(int, WPARAM, LPARAM);
+ ~KbdHook();
+ KbdHook(DWORD);
 
-  ~WarkeyModifier();
-  bool Initialise(unsigned long);
-  void Release();
-
-  WarkeyModifier(HINSTANCE);
-
- private:
-  static HHOOK kbd_hook;
-  HINSTANCE handle_;
+  static HHOOK hk;
 };
 
-HHOOK WarkeyModifier::kbd_hook(nullptr);
+HHOOK KbdHook::hk(nullptr);
+
+#if 0
 
 LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM lparam) {
 /*
@@ -87,6 +138,13 @@ LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM
       }
     }
 */
+  // TODO: KbdLowLevelProc
+  return CallNextHookEx(kbd_hook, code, wparam, lparam);
+}
+
+#endif
+
+LRESULT CALLBACK KbdHook::_Entry(int code, WPARAM wparam, LPARAM lparam) {
   try {
     if (HC_ACTION != code) {
       throw;
@@ -101,78 +159,142 @@ LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM
     MessageBox(nullptr, tip, _T("Tip(s)"), MB_OK);
   } catch (...) {
   }
-  // TODO: KbdLowLevelProc
-  return CallNextHookEx(kbd_hook, code, wparam, lparam);
+  return CallNextHookEx(hk, code, wparam, lparam);
 }
+
+KbdHook::~KbdHook() {
+  if (hk) {
+    UnhookWindowsHookEx(hk);
+    hk = nullptr;
+  }
+}
+
+KbdHook::KbdHook(DWORD thread_id) {
+  hk = SetWindowsHookEx(WH_KEYBOARD_LL, _Entry, (HINSTANCE)g_app.get_handle(), 
+      thread_id);
+  if (!hk) {
+    auto errstr(fmt_errmsg2(GetLastError()));
+    throw RuntimeError(errstr);
+  }
+}
+
+struct MouseHook {
+  static LRESULT CALLBACK _Entry(int, WPARAM, LPARAM);
+  ~MouseHook();
+  MouseHook();
+
+  static HHOOK hk;
+};
+
+HHOOK MouseHook::hk(nullptr);
+
+LRESULT CALLBACK MouseHook::_Entry(int code, WPARAM wparam, LPARAM lparam) {
+  return CallNextHookEx(hk, code, wparam, lparam);
+}
+
+MouseHook::~MouseHook() {
+}
+
+MouseHook::MouseHook() {
+}
+
+class WarkeyModifier : public KbdModInterface {
+ public:
+  ~WarkeyModifier();
+  WarkeyModifier();
+  bool Initialise(DWORD);
+  void Cleanup();
+
+  bool searching() const {
+    return searching_;
+  }
+
+ private:
+  void TryStartWar3Hook();
+
+  unique_ptr<KbdHook> kbd_;
+  mutex hookslock_;
+  atomic<bool> searching_;
+  future<void> war3tracker_;
+};
 
 WarkeyModifier::~WarkeyModifier() {
-  Release();
-}
-
-bool WarkeyModifier::Initialise(unsigned long thread_id) {
-  Release();
-  kbd_hook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdLowLevelProc, handle_, thread_id);
-  // TODO: WarkeyModifier::Intialise
-  return nullptr != kbd_hook;
-}
-
-void WarkeyModifier::Release() {
-  if (kbd_hook) {
-    UnhookWindowsHookEx(kbd_hook);
-    kbd_hook = nullptr;
+  searching_ = false;
+  try {
+    war3tracker_.get();
+  } catch (...) {
   }
-  // TODO: WarkeyModifier::Release
 }
 
-WarkeyModifier::WarkeyModifier(HINSTANCE inst) : handle_(inst) {
+WarkeyModifier::WarkeyModifier() : searching_(false) {
+  TryStartWar3Hook();
+}
+
+bool WarkeyModifier::Initialise(DWORD pid) {
+  using xk::WndEnumerator;
+
+  unique_lock<mutex> guard(hookslock_);
+  if (!kbd_) {
+    //GetWindowThreadProcessId()
+    //GetProcessInformation
+    auto wnd = WndEnumerator::Main(pid);
+    if (wnd) {
+      auto thread_id = GetWindowThreadProcessId(wnd, nullptr);
+      kbd_.reset(new KbdHook(thread_id));
+    }
+  }
+  return true;
+}
+
+void WarkeyModifier::Cleanup() {
+  unique_lock<mutex> guard(hookslock_);
+}
+
+void WarkeyModifier::TryStartWar3Hook() {
+  using std::async;
+  using xk::ProcessEnumerator;
+
+  searching_ = true;
+  auto &kmod(*this);
+  war3tracker_ = async([&kmod]() {
+    bool initialised(false);
+    while (kmod.searching()) {
+      ProcessEnumerator pe;
+      auto war3_pid = pe.fuzzy_lookup(_T("war3.exe"));
+      if (0 != war3_pid) {
+        // The PID found! War3 is running... Initialise the hooks now!
+        if (!initialised) {
+          { // Can I just beeeeeeep?!!!
+            MessageBeep(MB_ICONINFORMATION);
+          }
+          try {
+            kmod.Initialise(war3_pid);
+          } catch (exception &e) {
+            MessageBoxA(nullptr, e.what(), "Exception", MB_OK);
+          }
+          initialised = true;
+        }
+      } else {
+        // Not found. Cleanup the hooks.
+        if (initialised) {
+          {
+            MessageBeep(MB_ICONSTOP);
+          }
+          kmod.Cleanup();
+          initialised = false;
+        }
+      }
+      this_thread::sleep_for(chrono::milliseconds(100));
+    }
+  });
 }
 
 XK_NAMESPACE_END
 
 XK_NAMESPACE_BEGIN
 
-struct DllEntryApp {
-  typedef int (DllEntryApp::*Entry)(LPVOID);
-
-  ~DllEntryApp();
-  DllEntryApp(HANDLE h);
-  DllEntryApp();
-
-  KbdModInterface* CreateModifierOnce();
-
-  int run(DWORD reason, LPVOID reserved) {
-    if (0 != entries.count(reason)) {
-      return (this->*entries[reason])(reserved);
-    }
-    return -1;
-  }
-
-  void set_handle(HANDLE h) {
-    handle = h;
-  }
-
-  void set_handle_once(HANDLE h) {
-    if (!handle) {
-      handle = h;
-    }
-  }
-
-  HANDLE get_handle() const {
-    return handle;
-  }
-
- private:
-  int ProcessAttach(LPVOID);
-  int ProcessDetach(LPVOID);
-  int ThreadAttach(LPVOID);
-  int ThreadDetach(LPVOID);
-
-  HANDLE handle;
-  map<DWORD, Entry> entries;
-  unique_ptr<WarkeyModifier> wkmod;
-};
-
 DllEntryApp::~DllEntryApp() {
+  Release();
 }
 
 DllEntryApp::DllEntryApp(HANDLE h) : handle(h), wkmod(nullptr) {
@@ -187,16 +309,24 @@ DllEntryApp::DllEntryApp() : DllEntryApp(nullptr) {
 
 KbdModInterface* DllEntryApp::CreateModifierOnce() {
   if (!wkmod) {
-    wkmod.reset(new WarkeyModifier((HINSTANCE)get_handle()));
+    wkmod.reset(new WarkeyModifier());
   }
   return wkmod.get();
 }
 
+void DllEntryApp::Release() {
+  if (wkmod) {
+    wkmod.reset();
+  }
+}
+
 int DllEntryApp::ProcessAttach(LPVOID) {
+  CreateModifierOnce();
   return 1;
 }
 
 int DllEntryApp::ProcessDetach(LPVOID) {
+  Release();
   return 1;
 }
 
@@ -210,17 +340,11 @@ int DllEntryApp::ThreadDetach(LPVOID) {
 
 XK_NAMESPACE_END 
 
-static xk::DllEntryApp g_app;
-
 XK_CLINKAGE_BEGIN
 
 XK_API xk::KbdModInterface* xkGetModifier() {
   return g_app.CreateModifierOnce();
 }
-
-//XK_API void xkRelease(xk::KbdModInterface *kbdmod) {
-//
-//}
 
 XK_CLINKAGE_END 
 

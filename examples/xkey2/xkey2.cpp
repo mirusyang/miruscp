@@ -67,6 +67,8 @@ class AboutDlg : public wxDialog {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma region XKeyApp_Impl_BEGIN
+
 bool XKeyApp::OnInit() {
   if (!wxApp::OnInit()) {
     return false;
@@ -98,11 +100,6 @@ bool XKeyApp::OnInit() {
   if (!kbd_mod) {
     wxMessageBox(wxT("Please note that the modifier is nil! The library not works well!"),
         wxT("Caution!!!"), wxICON_WARNING | wxOK);
-  } else {
-    auto initialised = kbd_mod->Initialise(GetCurrentThreadId());
-    if (!initialised) {
-      wxMessageBox(wxT("Fails to initialise the kbd-hook! App may not works well!"));
-    }
   }
 
   // So the wxwidgets lib does the delete job... It's may not be a good idea!
@@ -116,7 +113,11 @@ bool XKeyApp::OnInit() {
   return false;
 }
 
+#pragma endregion XKeyApp_Impl_END
+
 //////////////////////////////////////////////////
+
+#pragma region WarkeyDlg_Impl_Begin
 
 WarkeyDlg::~WarkeyDlg() { }
 
@@ -232,7 +233,11 @@ void WarkeyDlg::OnEnabled(wxCommandEvent& evt) {
   }
 }
 
+#pragma endregion WarkeyDlg_Impl_END
+
 //////////////////////////////////////////////////
+
+#pragma region AboutDlg_Begin
 
 AboutDlg::~AboutDlg() { }
 
@@ -257,5 +262,7 @@ void AboutDlg::OnLeftUp(wxMouseEvent& evt) {
   //evt.StopPropagation();
   Close();
 }
+
+#pragma endregion AboutDlg_END
 
 wxIMPLEMENT_APP(XKeyApp);
