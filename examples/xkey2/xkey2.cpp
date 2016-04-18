@@ -182,8 +182,20 @@ WarkeyDlg::WarkeyDlg(atomic<xk::KbdModInterface*>& kmd) : wxDialog(), kbdmod_(km
       wxSizerFlags(1).Border(wxALL, 8));
   t_szr0->Add(new wxCheckBox(this, wxID_ANY, wxT("Enable SP Function0")),
       wxSizerFlags(1).Centre().Border(wxALL, 8));
-  top_szr->Add(t_szr0, wxSizerFlags(1).Bottom().Border(wxBOTTOM, 32));
-  top_szr->Add(new wxPanel(this), wxSizerFlags(1));
+  top_szr->Add(t_szr0, wxSizerFlags(1).Bottom().Border(wxBOTTOM, 8));
+  auto entip = new wxStaticText(this, wxID_ANY, 
+      wxT("NOTE: Before you try to make some changes of the key-maps,")
+      wxT(" disable it at first!"), 
+      wxDefaultPosition, wxDefaultSize);
+  entip->Wrap(140);
+  //wxString notrans_reason;
+  //if (!entip->IsTransparentBackgroundSupported(&notrans_reason)) {
+  //  wxMessageBox(notrans_reason);
+  //} else {
+  //  entip->SetBackgroundStyle(wxBG_STYLE_TRANSPARENT);
+  //}
+  entip->SetForegroundColour(*wxGREEN);
+  top_szr->Add(entip, wxSizerFlags(1).Bottom().Border(wxLEFT, 8));
   top_szr->Add(new wxPanel(this), wxSizerFlags(1));
   root_szr->Add(top_szr, wxSizerFlags(1));
   auto num_szr = new wxGridBagSizer(8, 8);
@@ -198,13 +210,13 @@ WarkeyDlg::WarkeyDlg(atomic<xk::KbdModInterface*>& kmd) : wxDialog(), kbdmod_(km
       num_szr->Add(ctrl, wxGBPosition(j+1, i+1));
     }
   }
-  num_szr->Add(new wxPanel(this), wxGBPosition(4, 5));
+  //num_szr->Add(new wxPanel(this), wxGBPosition(4, 5));
   root_szr->Add(num_szr, wxSizerFlags(0).Center().Border(wxBOTTOM | wxTOP, 8));
   auto sk_szr = new wxGridBagSizer(8, 8);
   // 3 x 4
   wxString sktitle[3][4] = {
     {wxT("M"), wxT("S"), wxT("H"), wxT("A")}, 
-    {wxT("P"), wxT("D"), wxT("F"), wxT("O")}, 
+    {wxT("P"), wxT("G"), wxT("D"), wxT("F")}, 
     {wxT("Q"), wxT("W"), wxT("E"), wxT("R")}, 
   };
   for (int i = 0, endi = 3; i < endi; ++i) {
@@ -274,10 +286,13 @@ void WarkeyDlg::OnAbout(wxCommandEvent&) {
 }
 
 void WarkeyDlg::OnModEnabled(wxCommandEvent& evt) {
-  // TODO: OnEanbled, do the function switch.
-  if (evt.IsChecked()) {
-    wxMessageBox(wxT("Ouch! You hit me!!"));
+  if (!kbdmod_.load()) {
+    wxMessageBox(wxT("Kbd-mod lib is not works well!"));
+    return;
   }
+  // Activated, Deactivated
+  kbdmod_.load()->Enable(evt.IsChecked());
+  // TODO: OnEanbled, do the function switch.
 }
 
 #pragma endregion WarkeyDlg_Impl_END

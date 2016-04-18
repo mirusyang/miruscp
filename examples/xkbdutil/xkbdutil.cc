@@ -97,6 +97,8 @@ class WarkeyModifier : public KbdModInterface {
   bool Initialise();
   void Release();
   void Map(WORD, WORD);
+  void Enable(bool);
+  bool Enabled() const;
   WarkeyModifier(DWORD);
 
  private:
@@ -148,6 +150,8 @@ LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM
           if (kNumSent != retv) {
             //LOG(debug) << "SendInput returns " << retv << ",GetLastError:"
             //    << GetLastError();
+            // Failed,
+            throw;
           }
           return 1;
         }
@@ -155,8 +159,8 @@ LRESULT CALLBACK WarkeyModifier::KbdLowLevelProc(int code, WPARAM wparam, LPARAM
     }
   } catch (...) {
   }
-  // TODO: KbdLowLevelProc
   return CallNextHookEx(kbd_hook, code, wparam, lparam);
+  // TODO: KbdLowLevelProc
 }
 
 WarkeyModifier::~WarkeyModifier() {
@@ -182,6 +186,15 @@ void WarkeyModifier::Map(WORD src, WORD target) {
   std::lock_guard<std::mutex> guardian(keymap_lock);
   keymap[src].first = (WORD)src;
   keymap[src].second = (WORD)target;
+}
+
+void WarkeyModifier::Enable(bool enabled) {
+  // TODO: WarkeyModifier::Enable
+}
+
+bool WarkeyModifier::Enabled() const {
+  return false;
+  // TODO: WarkeyModifier::Enabled
 }
 
 WarkeyModifier::WarkeyModifier(DWORD thread_id) {
