@@ -5,6 +5,6 @@ miruscp
 C++ samples using external libraries.
 
 ###libraries:
-boost
-wxwidgets
+* boost
+* wxwidgets
 

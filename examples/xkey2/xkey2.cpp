@@ -81,43 +81,44 @@ bool XKeyApp::OnInit() {
 
   // load the library here
   atomic<xk::KbdModInterface*> kbd_mod(nullptr);
-  // App listener.
-  atomic<bool> listening(true);
-  auto app_listener = async([&kbd_mod, &listening]() {
-    // x-kbd-mod library.
-    xk::DllLoader kmodlib;
+  // x-kbd-mod library.
+  xk::DllLoader kmodlib;
+  {
     xkGetModifierApi xkGetModifier(nullptr);
     bool modloaded(false);
-  #ifdef XK_DEBUG
+#ifdef XK_DEBUG
     modloaded = kmodlib(wxT("xkbdutil_d.dll"));
-  #else
+#else
     modloaded = kmodlib(wxT("xkbdutil.dll"));
-  #endif
+#endif
     if (!modloaded) {
       wxString tip;
       tip << wxT("Fails to load xkbdutil[_d].dll library!\n")
           << wxT(" GetLastError: ") << GetLastError();
       wxMessageBox(tip, wxT("Caution!!"), wxICON_WARNING | wxOK);
-    } else {
-      xkGetModifier = kmodlib.get_func<xkGetModifierApi>("xkGetModifier");
-      if (!xkGetModifier) {
-        wxMessageBox(wxT("Fails to get the API address!"));
-        return;
-      } else {
-        // Creates the hook(s) now.
-        kbd_mod = xkGetModifier(0);
-        try {
-          auto initialised = kbd_mod.load()->Initialise();
-          if (!initialised) {
-            wxMessageBox(wxT("Fails to initialise the kbd-hook! App may not works well!"));
-          }
-        } catch (exception &e) {
-          wxMessageBox(e.what());
-        } catch (...) {
-          wxMessageBox(wxT("Something UN-KNOWN!!!"));
-        }
-      }
+      return false;
     }
+    xkGetModifier = kmodlib.get_func<xkGetModifierApi>("xkGetModifier");
+    if (!xkGetModifier) {
+      wxMessageBox(wxT("Fails to get the API address!"));
+      return false;
+    }
+    // Creates the hook(s) now.
+    kbd_mod = xkGetModifier(0);
+    try {
+      auto initialised = kbd_mod.load()->Initialise();
+      if (!initialised) {
+        wxMessageBox(wxT("Fails to initialise the kbd-hook! App may not works well!"));
+      }
+    } catch (exception &e) {
+      wxMessageBox(e.what());
+    } catch (...) {
+      wxMessageBox(wxT("Something UN-KNOWN!!!"));
+    }
+  }
+  // App listener.
+  atomic<bool> listening(true);
+  auto app_listener = async([&kbd_mod, &listening]() {
     bool war3running(false);
     while (listening) {
       xk::ProcessEnumerator pe;
@@ -292,7 +293,6 @@ void WarkeyDlg::OnModEnabled(wxCommandEvent& evt) {
   }
   // Activated, Deactivated
   kbdmod_.load()->Enable(evt.IsChecked());
-  // TODO: OnEanbled, do the function switch.
 }
 
 #pragma endregion WarkeyDlg_Impl_END
@@ -306,6 +306,9 @@ AboutDlg::~AboutDlg() { }
 AboutDlg::AboutDlg(wxWindow *parent) 
     : wxDialog(parent, wxID_ABOUT, wxT(""), wxDefaultPosition, wxDefaultSize, 
           wxPOPUP_WINDOW) { 
+  wxCursor cursor(wxT("quest_cursor"), wxBITMAP_TYPE_CUR_RESOURCE);
+  SetCursor(cursor);
+ 
   auto vbox = new wxBoxSizer(wxHORIZONTAL);
   auto hbox = new wxBoxSizer(wxVERTICAL);
   hbox->Add(new wxStaticText(this, wxID_ANY, 

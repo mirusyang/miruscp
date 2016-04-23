@@ -65,6 +65,12 @@ struct KbdModInterface {
     Checks if the function(s) was enabled or not.
   */
   virtual bool Enabled() const = 0;
+
+  /*!
+    \brief  
+    Is the key specified by \c k mapped to another key or not.
+  */
+  virtual bool IsKeyMapped(uint16_t k) const = 0;
 };
 
 XK_NAMESPACE_END
