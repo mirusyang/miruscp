@@ -389,70 +389,48 @@ bool WarkeyModifier::UniqueKeyMapProc(WORD srck, WORD tark,
 
 /*
 Steps:
-* Record the original position of the mouse
-* Moves to the screct area
-* Send click event
-* Moves to the original position
+* If the key pressed:
+  * Moves to the screct area(mouse)
+  * Send click event
+* If the key up:
+  * Moves to the original position(mouse)
+NOTE: should prevent the key pressed repeatedly.
 */
 bool WarkeyModifier::SkillKeyMapProc(const RECT &screct, LPKBDLLHOOKSTRUCT kbd) {
-  //static bool pressed(false);
-  ////auto srckey = (kbd->vkCode & 0xFF);
-  //// Only modified when the key pressed and then up
-  //if (0 == (kbd->flags & LLKHF_UP)) {
-  //  if (pressed) {
-  //    // It's eaten...
-  //    return false;
-  //  }
-  //  pressed = true;
-  //} else {
-  //  pressed = false;
-  //  return false;
-  //}
-  POINT cursor_original_pos = {0};
-  GetCursorPos(&cursor_original_pos);
-  auto target_pos_x = screct.left + (screct.right - screct.left) / 2;
-  auto target_pos_y = screct.top + (screct.bottom - screct.top) / 2;
-  SetCursorPos(target_pos_x, target_pos_y);
-  INPUT inputs[4] = {0};
-  UINT num_sent(0);
-  inputs[num_sent].type = INPUT_MOUSE;
-  //inputs[num_sent].mi.dx = (LONG)(target_pos_x * 65535 / 1366.);
-  //inputs[num_sent].mi.dy = (LONG)(target_pos_y * 65535 / 768.);
-  inputs[num_sent].mi.dx = 0;
-  inputs[num_sent].mi.dx = 0;
-  inputs[num_sent].mi.mouseData = 0;
-  inputs[num_sent].mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
-  inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
-  inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
-  ++num_sent;
-  INPUT *inp = inputs;
-  auto retv = SendInput(num_sent, inp, sizeof(INPUT));
-  if (num_sent != retv) {
-    // SendInput failed, just call the next hook.
-    return true;
+  static auto pressed(false);
+  static POINT cursor_original_pos = {0};
+  if (0 == (kbd->flags & LLKHF_UP)) {
+    if (pressed) {
+      // Do not call the default hook processor.
+      return false;
+    }
+    GetCursorPos(&cursor_original_pos);
+    auto target_pos_x = screct.left + (screct.right - screct.left) / 2;
+    auto target_pos_y = screct.top + (screct.bottom - screct.top) / 2;
+    SetCursorPos(target_pos_x, target_pos_y);
+    INPUT inputs[4] = {0};
+    UINT num_sent(0);
+    inputs[num_sent].type = INPUT_MOUSE;
+    inputs[num_sent].mi.dx = 0;
+    inputs[num_sent].mi.dx = 0;
+    inputs[num_sent].mi.mouseData = 0;
+    inputs[num_sent].mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
+    inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+    inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+    ++num_sent;
+    INPUT *inp = inputs;
+    auto retv = SendInput(num_sent, inp, sizeof(INPUT));
+    if (num_sent != retv) {
+      // SendInput failed, just call the next hook.
+      return true;
+    }
+    pressed = true;
+  } else {
+    // Moves the cursor to the original position.
+    SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
+    pressed = false;
   }
-  this_thread::sleep_for(chrono::milliseconds(20));
-  SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
-  //async([&cursor_original_pos]() {
-  //  SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
-  //});
-  //num_sent = 0;
-  //inputs[num_sent].type = INPUT_MOUSE;
-  //inputs[num_sent].mi.dx = (LONG)(cursor_original_pos.x * 65535 / 1366.);
-  //inputs[num_sent].mi.dy = (LONG)(cursor_original_pos.y * 65535 / 768.);
-  //inputs[num_sent].mi.mouseData = 0;
-  //inputs[num_sent].mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
-  //inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
-  //inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
-  //++num_sent;
-  //retv = SendInput(num_sent, inp, sizeof(INPUT));
-  //if (num_sent != retv) {
-  //  // SendInput failed, just call the next hook.
-  //  return true;
-  //}
-  //SetPhysicalCursorPos();
   return false;
-  // TODO: WarkeyModifier::SkillKeyMapProc
 }
 
 XK_NAMESPACE_END
