@@ -27,6 +27,7 @@
 #include <mutex>
 #include <atomic>
 #include <algorithm>
+#include <future>
 #include "xkit/winutilities.h"
 #include "wres/resource.h"
 
@@ -90,19 +91,36 @@ KbdModInterface::~KbdModInterface() {
 }
 
 class WarkeyModifier : public KbdModInterface {
-  typedef pair<WORD, WORD> KeyPair;
+  struct SkillKeyMap {
+    WORD tarkey;    //!< target key.
+    RECT screct;    //!< screen rect to be clicked by l-mouse clicks.
+  };
 
  public:
   static LRESULT CALLBACK _KbdLowLevelProc(int, WPARAM, LPARAM);
   static LRESULT CALLBACK _MouseLowLevelProc(int, WPARAM, LPARAM);
 
+  static bool is_strict_vkcode(WORD vkc) {
+    return vkc > 0 && vkc < 255;
+  }
+
+  static bool is_invalid_rect(const RECT &rect) {
+    return 0 == rect.left && 0 == rect.top && 0 == rect.right && 0 == rect.bottom;
+  }
+
+  static bool is_modified_kbdinfo(LPKBDLLHOOKSTRUCT kbd) {
+    return kInvalidTimestamp == kbd->time;
+  }
+
   ~WarkeyModifier();
   bool Initialise();
   void Release();
-  void Map(WORD, WORD);
+  void Map(uint8_t, uint8_t);
+  void MapSk(uint8_t, long, long, long, long);
+  bool IsKeyMapped(uint8_t) const;
+  void Clear(uint8_t);
   void Enable(bool);
   bool Enabled() const;
-  bool IsKeyMapped(WORD) const;
 
   WarkeyModifier();
   WarkeyModifier(DWORD);
@@ -130,10 +148,6 @@ class WarkeyModifier : public KbdModInterface {
     return 0U != akstates_;
   }
 
-  bool is_strict_vkcode(WORD vkc) const {
-    return vkc > 0 && vkc < 255;
-  }
-
   void release_hooks() {
     if (ms_hook_) {
       UnhookWindowsHookEx(ms_hook_);
@@ -157,13 +171,14 @@ class WarkeyModifier : public KbdModInterface {
   bool KbdProc(WPARAM, LPARAM);
   bool MouseProc(WPARAM, LPARAM);
   bool UniqueKeyMapProc(WORD, WORD, LPKBDLLHOOKSTRUCT) const;
-  bool SkillKeyMapProc(WORD, LPKBDLLHOOKSTRUCT) const;
+  bool SkillKeyMapProc(const RECT&, LPKBDLLHOOKSTRUCT);
 
   static const DWORD kInvalidTimestamp = 0xDEADBEEF;
-  static const auto kNumKeyPairs = 256;
+  static const auto kNumKeyPairs = (uint32_t)(uint8_t)-1;
+  static const WORD kKeyEaten = (WORD)-1;
   static WarkeyModifier *inst;
   HHOOK kbd_hook_;
-  KeyPair keymap_[kNumKeyPairs];
+  SkillKeyMap keymap_[kNumKeyPairs];
   mutable mutex keymap_lock_;
   uint32_t akstates_;
   HHOOK ms_hook_;
@@ -205,18 +220,71 @@ bool WarkeyModifier::Initialise() {
   Map(0x36, VK_NUMPAD1); Map(0x37, VK_NUMPAD2);
   //Map(0x32, 'A');
   //Map(VK_LMENU, VK_LSHIFT);
+
+  {
+    const auto kScreenWidth = 1366U;
+    const auto kScreenHeight = 768U;
+    int sk1left = 1058;
+    int sk1top = 602;
+    int skboxw = 62;
+    int skboxh = 46;
+    int horzoffset = 74; // 1132, 1206
+    int vertoffset = 56; // 658, 713
+    uint8_t sks[] = {
+      'M', 'S', 'H', 'A', 
+      'P', 'G', 'D', 'F', 
+      'Q', 'W', 'E', 'R', 
+    };
+    // 3 x 4
+    for (int r = 0, endr = 3; r < endr; ++r) {
+      for (int c = 0, endc = 4; c < endc; ++c) {
+        auto rl = sk1left + horzoffset * c;
+        auto rt = sk1top + vertoffset * r;
+        auto rr = rl + skboxw;
+        auto rb = rt + skboxh;
+        MapSk(sks[r*endc + c], rl, rt, rr, rb);
+      }
+    }
+  }
   return true;
   // TODO: WarkeyModifier::Intialise
 }
 
 void WarkeyModifier::Release() {
+  memset(keymap_, 0, sizeof keymap_);
   // TODO: WarkeyModifier::Release
 }
 
-void WarkeyModifier::Map(WORD src, WORD target) {
+void WarkeyModifier::Map(uint8_t src, uint8_t target) {
   lock_guard<mutex> guardian(keymap_lock_);
-  keymap_[src].first = (WORD)src;
-  keymap_[src].second = (WORD)target;
+  keymap_[src].tarkey = (WORD)target;
+  keymap_[src].screct = {0};
+}
+
+void WarkeyModifier::MapSk(uint8_t src, long l, long t, long r, long b) {
+  lock_guard<mutex> guard(keymap_lock_);
+  keymap_[src].tarkey = 0U;
+  keymap_[src].screct = RECT{l, t, r, b};
+}
+
+bool WarkeyModifier::IsKeyMapped(uint8_t srck) const {
+  lock_guard<mutex> guard(keymap_lock_);
+  auto tarkey = keymap_[srck].tarkey;
+  if (is_strict_vkcode(tarkey)) {
+    return true;
+  }
+  if (kKeyEaten == tarkey && is_invalid_rect(keymap_[srck].screct)) {
+    return true;
+  }
+  if (!is_invalid_rect(keymap_[srck].screct)) {
+    return true;
+  }
+  return false;
+}
+
+void WarkeyModifier::Clear(uint8_t srck) {
+  lock_guard<mutex> guard(keymap_lock_);
+  memset(&keymap_[srck], 0, sizeof keymap_[srck]);
 }
 
 void WarkeyModifier::Enable(bool enabled) {
@@ -227,14 +295,10 @@ bool WarkeyModifier::Enabled() const {
   return enabled_;
 }
 
-bool WarkeyModifier::IsKeyMapped(WORD srck) const {
-  lock_guard<mutex> guard(keymap_lock_);
-  return false;
-  // TODO: WarkeyModifier::IsKeyMapped
-}
-
 WarkeyModifier::WarkeyModifier() 
     : kbd_hook_(nullptr), akstates_(0), ms_hook_(nullptr), enabled_(false) {
+  memset(keymap_, 0, sizeof keymap_);
+  //fill(pressed_, pressed_ + kNumKeyPairs, false);
 }
 
 WarkeyModifier::WarkeyModifier(DWORD thread_id) : WarkeyModifier() {
@@ -244,13 +308,13 @@ WarkeyModifier::WarkeyModifier(DWORD thread_id) : WarkeyModifier() {
     auto errstr = fmt_errmsg2(GetLastError());
     throw RuntimeError(errstr);
   }
-  ms_hook_ = SetWindowsHookEx(WH_MOUSE_LL, _MouseLowLevelProc, 
-      (HINSTANCE)g_app.get_handle(), thread_id);
-  if (!ms_hook_) {
-    release_hooks();
-    auto errstr = fmt_errmsg2(GetLastError());
-    throw RuntimeError(errstr);
-  }
+  //ms_hook_ = SetWindowsHookEx(WH_MOUSE_LL, _MouseLowLevelProc, 
+  //    (HINSTANCE)g_app.get_handle(), thread_id);
+  //if (!ms_hook_) {
+  //  release_hooks();
+  //  auto errstr = fmt_errmsg2(GetLastError());
+  //  throw RuntimeError(errstr);
+  //}
   inst = this;
 }
 
@@ -260,26 +324,37 @@ bool WarkeyModifier::KbdProc(WPARAM wparam, LPARAM lparam) {
     // call the next hook.
     return true;
   }
+  if (is_modified_kbdinfo(kbd)) {
+    return true;
+  }
   track_assistkeys_states(kbd);
+  if (is_any_assistkey_pressed()) {
+    return true;
+  }
 
-  KeyPair km(0, 0);
+  WORD srckey(0), tarkey(0);
+  RECT screct = {0};
   {
     std::lock_guard<std::mutex> guard(keymap_lock_);
-    int i(kbd->vkCode & 0xFF);
-    km.first = keymap_[i].first;
-    km.second = keymap_[i].second;
+    srckey = kbd->vkCode & 0xFF;
+    tarkey = keymap_[srckey].tarkey;
+    screct = keymap_[srckey].screct;
   }
   // Maybe the target-key code is not the correct vk-code(1~254), then I just
   // ignore this group.
-  if (is_strict_vkcode(km.first)) {
-    if (0 == km.second) {
+  if (is_strict_vkcode(srckey)) {
+    if (kKeyEaten == tarkey && is_invalid_rect(screct)) {
       // It is eaten.
       return false;
     }
-    if (is_strict_vkcode(km.second)) {
-      return UniqueKeyMapProc(km.first, km.second, kbd);
+    if (is_strict_vkcode(tarkey)) {
+      return UniqueKeyMapProc(srckey, tarkey, kbd);
+    }
+    if (!is_invalid_rect(screct)) {
+      return SkillKeyMapProc(screct, kbd);
     }
   }
+  // Not mapped.
   return true;
   // TODO: WarkeyModifier::KbdProc
 }
@@ -295,31 +370,88 @@ bool WarkeyModifier::MouseProc(WPARAM wparam, LPARAM lparam) {
 
 bool WarkeyModifier::UniqueKeyMapProc(WORD srck, WORD tark, 
     LPKBDLLHOOKSTRUCT kbd) const {
-  if (is_any_assistkey_pressed()) {
+  const UINT kNumSent(1);
+  INPUT inputs = {0};
+  INPUT *inp = &inputs;
+  inp->type = INPUT_KEYBOARD;
+  inp->ki.wVk = tark;
+  inp->ki.wScan = MapVirtualKeyEx(tark, MAPVK_VK_TO_VSC, 0);
+  inp->ki.dwFlags = 0 != (kbd->flags & LLKHF_UP) ? KEYEVENTF_KEYUP : 0;
+  inp->ki.time = kInvalidTimestamp; // This is self modification.
+  inp->ki.dwExtraInfo = GetMessageExtraInfo(); 
+  auto retv = SendInput(kNumSent, inp, sizeof(INPUT));
+  if (kNumSent != retv) {
+    // SendInput failed, just call the next hook.
     return true;
   }
-  if (kInvalidTimestamp != kbd->time) {
-    const UINT kNumSent(1);
-    INPUT inputs = {0};
-    INPUT *inp = &inputs;
-    inp->type = INPUT_KEYBOARD;
-    inp->ki.wVk = tark;
-    inp->ki.wScan = MapVirtualKeyEx(tark, MAPVK_VK_TO_VSC, 0);
-    inp->ki.dwFlags = 0 != (kbd->flags & LLKHF_UP) ? KEYEVENTF_KEYUP : 0;
-    inp->ki.time = kInvalidTimestamp; // This is self modification.
-    inp->ki.dwExtraInfo = GetMessageExtraInfo(); 
-    auto retv = SendInput(kNumSent, inp, sizeof(INPUT));
-    if (kNumSent != retv) {
-      // SendInput failed, just call the next hook.
-      return true;
-    }
-    return false;
-  }
-  return true;
+  return false;
 }
 
-bool WarkeyModifier::SkillKeyMapProc(WORD srck, LPKBDLLHOOKSTRUCT kbd) const {
-  return true;
+/*
+Steps:
+* Record the original position of the mouse
+* Moves to the screct area
+* Send click event
+* Moves to the original position
+*/
+bool WarkeyModifier::SkillKeyMapProc(const RECT &screct, LPKBDLLHOOKSTRUCT kbd) {
+  //static bool pressed(false);
+  ////auto srckey = (kbd->vkCode & 0xFF);
+  //// Only modified when the key pressed and then up
+  //if (0 == (kbd->flags & LLKHF_UP)) {
+  //  if (pressed) {
+  //    // It's eaten...
+  //    return false;
+  //  }
+  //  pressed = true;
+  //} else {
+  //  pressed = false;
+  //  return false;
+  //}
+  POINT cursor_original_pos = {0};
+  GetCursorPos(&cursor_original_pos);
+  auto target_pos_x = screct.left + (screct.right - screct.left) / 2;
+  auto target_pos_y = screct.top + (screct.bottom - screct.top) / 2;
+  SetCursorPos(target_pos_x, target_pos_y);
+  INPUT inputs[4] = {0};
+  UINT num_sent(0);
+  inputs[num_sent].type = INPUT_MOUSE;
+  //inputs[num_sent].mi.dx = (LONG)(target_pos_x * 65535 / 1366.);
+  //inputs[num_sent].mi.dy = (LONG)(target_pos_y * 65535 / 768.);
+  inputs[num_sent].mi.dx = 0;
+  inputs[num_sent].mi.dx = 0;
+  inputs[num_sent].mi.mouseData = 0;
+  inputs[num_sent].mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
+  inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+  inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+  ++num_sent;
+  INPUT *inp = inputs;
+  auto retv = SendInput(num_sent, inp, sizeof(INPUT));
+  if (num_sent != retv) {
+    // SendInput failed, just call the next hook.
+    return true;
+  }
+  this_thread::sleep_for(chrono::milliseconds(20));
+  SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
+  //async([&cursor_original_pos]() {
+  //  SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
+  //});
+  //num_sent = 0;
+  //inputs[num_sent].type = INPUT_MOUSE;
+  //inputs[num_sent].mi.dx = (LONG)(cursor_original_pos.x * 65535 / 1366.);
+  //inputs[num_sent].mi.dy = (LONG)(cursor_original_pos.y * 65535 / 768.);
+  //inputs[num_sent].mi.mouseData = 0;
+  //inputs[num_sent].mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+  //inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+  //inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+  //++num_sent;
+  //retv = SendInput(num_sent, inp, sizeof(INPUT));
+  //if (num_sent != retv) {
+  //  // SendInput failed, just call the next hook.
+  //  return true;
+  //}
+  //SetPhysicalCursorPos();
+  return false;
   // TODO: WarkeyModifier::SkillKeyMapProc
 }
 

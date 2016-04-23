@@ -52,7 +52,25 @@ struct KbdModInterface {
     \brief  
     Maps one key to another. 
   */
-  virtual void Map(uint16_t, uint16_t) = 0;
+  virtual void Map(uint8_t, uint8_t) = 0;
+
+  /*!
+    \brief  
+    Maps the skill key.
+  */
+  virtual void MapSk(uint8_t k, long l, long t, long r, long b) = 0;
+
+  /*!
+    \brief  
+    Is the key specified by \c k mapped to another key or not.
+  */
+  virtual bool IsKeyMapped(uint8_t k) const = 0;
+
+  /*!
+    \brief  
+    Clear the map setting of the key specified by \c k.
+  */
+  virtual void Clear(uint8_t k) = 0;
 
   /*!
     \brief  
@@ -65,12 +83,6 @@ struct KbdModInterface {
     Checks if the function(s) was enabled or not.
   */
   virtual bool Enabled() const = 0;
-
-  /*!
-    \brief  
-    Is the key specified by \c k mapped to another key or not.
-  */
-  virtual bool IsKeyMapped(uint16_t k) const = 0;
 };
 
 XK_NAMESPACE_END
