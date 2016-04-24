@@ -221,31 +221,31 @@ bool WarkeyModifier::Initialise() {
   //Map(0x32, 'A');
   //Map(VK_LMENU, VK_LSHIFT);
 
-  {
-    const auto kScreenWidth = 1366U;
-    const auto kScreenHeight = 768U;
-    int sk1left = 1058;
-    int sk1top = 602;
-    int skboxw = 62;
-    int skboxh = 46;
-    int horzoffset = 74; // 1132, 1206
-    int vertoffset = 56; // 658, 713
-    uint8_t sks[] = {
-      'M', 'S', 'H', 'A', 
-      'P', 'G', 'D', 'F', 
-      'Q', 'W', 'E', 'R', 
-    };
-    // 3 x 4
-    for (int r = 0, endr = 3; r < endr; ++r) {
-      for (int c = 0, endc = 4; c < endc; ++c) {
-        auto rl = sk1left + horzoffset * c;
-        auto rt = sk1top + vertoffset * r;
-        auto rr = rl + skboxw;
-        auto rb = rt + skboxh;
-        MapSk(sks[r*endc + c], rl, rt, rr, rb);
-      }
-    }
-  }
+  //{
+  //  const auto kScreenWidth = 1366U;
+  //  const auto kScreenHeight = 768U;
+  //  int sk1left = 1058;
+  //  int sk1top = 602;
+  //  int skboxw = 62;
+  //  int skboxh = 46;
+  //  int horzoffset = 74; // 1132, 1206
+  //  int vertoffset = 56; // 658, 713
+  //  uint8_t sks[] = {
+  //    'M', 'S', 'H', 'A', 
+  //    'P', 'G', 'D', 'F', 
+  //    'Q', 'W', 'E', 'R', 
+  //  };
+  //  // 3 x 4
+  //  for (int r = 0, endr = 3; r < endr; ++r) {
+  //    for (int c = 0, endc = 4; c < endc; ++c) {
+  //      auto rl = sk1left + horzoffset * c;
+  //      auto rt = sk1top + vertoffset * r;
+  //      auto rr = rl + skboxw;
+  //      auto rb = rt + skboxh;
+  //      MapSk(sks[r*endc + c], rl, rt, rr, rb);
+  //    }
+  //  }
+  //}
   return true;
   // TODO: WarkeyModifier::Intialise
 }
@@ -392,15 +392,20 @@ Steps:
 * If the key pressed:
   * Moves to the screct area(mouse)
   * Send click event
-* If the key up:
+* If the key up: / or the secondary press event comes:
   * Moves to the original position(mouse)
 NOTE: should prevent the key pressed repeatedly.
 */
 bool WarkeyModifier::SkillKeyMapProc(const RECT &screct, LPKBDLLHOOKSTRUCT kbd) {
   static auto pressed(false);
+  static auto cursor_moved(false);
   static POINT cursor_original_pos = {0};
   if (0 == (kbd->flags & LLKHF_UP)) {
     if (pressed) {
+      if (!cursor_moved) {
+        SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
+        cursor_moved = true;
+      }
       // Do not call the default hook processor.
       return false;
     }
@@ -424,10 +429,14 @@ bool WarkeyModifier::SkillKeyMapProc(const RECT &screct, LPKBDLLHOOKSTRUCT kbd) 
       // SendInput failed, just call the next hook.
       return true;
     }
+    cursor_moved = false;
     pressed = true;
   } else {
-    // Moves the cursor to the original position.
-    SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
+    if (!cursor_moved) {
+      // Moves the cursor to the original position.
+      SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
+      cursor_moved = true;
+    }
     pressed = false;
   }
   return false;
