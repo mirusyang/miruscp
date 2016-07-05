@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wx01hi", "profiles\wx01hi.vcxproj", "{CBED40A4-E85E-466B-995E-327230B7B240}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xkey2", "profiles\xkey2.vcxproj", "{CD65EA19-D780-4E8F-8D6D-85A149E99190}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xkbdutil", "profiles\xkbdutil.vcxproj", "{B4B29EF5-FD93-46CB-A4CF-E2072894356A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sillywatcher", "profiles\sillywatcher.vcxproj", "{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,14 @@ Global
 		{B4B29EF5-FD93-46CB-A4CF-E2072894356A}.Release|x64.Build.0 = Release|x64
 		{B4B29EF5-FD93-46CB-A4CF-E2072894356A}.Release|x86.ActiveCfg = Release|Win32
 		{B4B29EF5-FD93-46CB-A4CF-E2072894356A}.Release|x86.Build.0 = Release|Win32
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Debug|x64.ActiveCfg = Debug|x64
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Debug|x64.Build.0 = Debug|x64
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Debug|x86.ActiveCfg = Debug|Win32
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Debug|x86.Build.0 = Debug|Win32
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Release|x64.ActiveCfg = Release|x64
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Release|x64.Build.0 = Release|x64
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Release|x86.ActiveCfg = Release|Win32
+		{E06A9FD4-6038-43E4-87A7-50A3D8DFAEA3}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
