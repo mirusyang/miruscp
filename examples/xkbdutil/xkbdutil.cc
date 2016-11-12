@@ -221,31 +221,31 @@ bool WarkeyModifier::Initialise() {
   //Map(0x32, 'A');
   //Map(VK_LMENU, VK_LSHIFT);
 
-  //{
-  //  const auto kScreenWidth = 1366U;
-  //  const auto kScreenHeight = 768U;
-  //  int sk1left = 1058;
-  //  int sk1top = 602;
-  //  int skboxw = 62;
-  //  int skboxh = 46;
-  //  int horzoffset = 74; // 1132, 1206
-  //  int vertoffset = 56; // 658, 713
-  //  uint8_t sks[] = {
-  //    'M', 'S', 'H', 'A', 
-  //    'P', 'G', 'D', 'F', 
-  //    'Q', 'W', 'E', 'R', 
-  //  };
-  //  // 3 x 4
-  //  for (int r = 0, endr = 3; r < endr; ++r) {
-  //    for (int c = 0, endc = 4; c < endc; ++c) {
-  //      auto rl = sk1left + horzoffset * c;
-  //      auto rt = sk1top + vertoffset * r;
-  //      auto rr = rl + skboxw;
-  //      auto rb = rt + skboxh;
-  //      MapSk(sks[r*endc + c], rl, rt, rr, rb);
-  //    }
-  //  }
-  //}
+  {
+    const auto kScreenWidth = 1366U;
+    const auto kScreenHeight = 768U;
+    int sk1left = 1058;
+    int sk1top = 602;
+    int skboxw = 62;
+    int skboxh = 46;
+    int horzoffset = 74; // 1132, 1206
+    int vertoffset = 56; // 658, 713
+    uint8_t sks[] = {
+      'M', 'S', 'H', 'A', 
+      'P', 'G', 'D', 'F', 
+      'Q', 'W', 'E', 'R', 
+    };
+    // 3 x 4
+    for (int r = 0, endr = 3; r < endr; ++r) {
+      for (int c = 0, endc = 4; c < endc; ++c) {
+        auto rl = sk1left + horzoffset * c;
+        auto rt = sk1top + vertoffset * r;
+        auto rr = rl + skboxw;
+        auto rb = rt + skboxh;
+        MapSk(sks[r*endc + c], rl, rt, rr, rb);
+      }
+    }
+  }
   return true;
   // TODO: WarkeyModifier::Intialise
 }
@@ -390,54 +390,86 @@ bool WarkeyModifier::UniqueKeyMapProc(WORD srck, WORD tark,
 /*
 Steps:
 * If the key pressed:
-  * Moves to the screct area(mouse)
-  * Send click event
+  * Send click event ( the screct area(mouse) )
 * If the key up: / or the secondary press event comes:
   * Moves to the original position(mouse)
 NOTE: should prevent the key pressed repeatedly.
 */
 bool WarkeyModifier::SkillKeyMapProc(const RECT &screct, LPKBDLLHOOKSTRUCT kbd) {
-  static auto pressed(false);
-  static auto cursor_moved(false);
+  static enum {
+    S_IDLE = 0,
+    S_CLICKED,
+    S_MOVBACK
+  } step = S_IDLE;
   static POINT cursor_original_pos = {0};
-  if (0 == (kbd->flags & LLKHF_UP)) {
-    if (pressed) {
-      if (!cursor_moved) {
-        SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
-        cursor_moved = true;
+  INPUT inputs[4] = {0};
+  UINT num_sent(0);
+  if (LLKHF_UP != (kbd->flags & LLKHF_UP)) { // key-down
+    if (S_IDLE == step) {
+      GetCursorPos(&cursor_original_pos);
+      auto target_pos_x = screct.left + (screct.right - screct.left) / 2;
+      auto target_pos_y = screct.top + (screct.bottom - screct.top) / 2;
+      num_sent = 0;
+      inputs[num_sent].type = INPUT_MOUSE;
+      inputs[num_sent].mi.dx = LONG(double(target_pos_x) / 1366U * 65535);
+      inputs[num_sent].mi.dy = LONG(double(target_pos_y) / 768U * 65535);
+      inputs[num_sent].mi.mouseData = 0;
+      inputs[num_sent].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_MOVE_NOCOALESCE
+          | MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
+      inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+      inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+      ++num_sent;
+      //inputs[num_sent].type = INPUT_MOUSE;
+      //inputs[num_sent].mi.dx = LONG(double(cursor_original_pos.x) / 1366U * 65535);
+      //inputs[num_sent].mi.dy = LONG(double(cursor_original_pos.y) / 768U * 65535);
+      //inputs[num_sent].mi.mouseData = 0;
+      //inputs[num_sent].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_MOVE_NOCOALESCE;
+      //inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+      //inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+      //++num_sent;
+      INPUT *inp = inputs;
+      auto retv = SendInput(num_sent, inp, sizeof(INPUT));
+      if (num_sent != retv) {
+        // SendInput failed, just call the next hook.
+        return true;
       }
-      // Do not call the default hook processor.
-      return false;
-    }
-    GetCursorPos(&cursor_original_pos);
-    auto target_pos_x = screct.left + (screct.right - screct.left) / 2;
-    auto target_pos_y = screct.top + (screct.bottom - screct.top) / 2;
-    SetCursorPos(target_pos_x, target_pos_y);
-    INPUT inputs[4] = {0};
-    UINT num_sent(0);
-    inputs[num_sent].type = INPUT_MOUSE;
-    inputs[num_sent].mi.dx = 0;
-    inputs[num_sent].mi.dx = 0;
-    inputs[num_sent].mi.mouseData = 0;
-    inputs[num_sent].mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
-    inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
-    inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
-    ++num_sent;
-    INPUT *inp = inputs;
-    auto retv = SendInput(num_sent, inp, sizeof(INPUT));
-    if (num_sent != retv) {
-      // SendInput failed, just call the next hook.
-      return true;
-    }
-    cursor_moved = false;
-    pressed = true;
-  } else {
-    if (!cursor_moved) {
+      step = S_CLICKED;
+    } else if (S_CLICKED == step) {
       // Moves the cursor to the original position.
-      SetCursorPos(cursor_original_pos.x, cursor_original_pos.y);
-      cursor_moved = true;
+      num_sent = 0;
+      inputs[num_sent].type = INPUT_MOUSE;
+      inputs[num_sent].mi.dx = LONG(double(cursor_original_pos.x) / 1366U * 65535);
+      inputs[num_sent].mi.dy = LONG(double(cursor_original_pos.y) / 768U * 65535);
+      inputs[num_sent].mi.mouseData = 0;
+      inputs[num_sent].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_MOVE_NOCOALESCE;
+      inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+      inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+      ++num_sent;
+      INPUT *inp = inputs;
+      if (num_sent != SendInput(num_sent, inp, sizeof(INPUT))) {
+        return true;
+      }
+      step = S_MOVBACK;
     }
-    pressed = false;
+  } else { // key-up
+    if (S_CLICKED == step) {
+      // Moves the cursor to the original position.
+      num_sent = 0;
+      inputs[num_sent].type = INPUT_MOUSE;
+      inputs[num_sent].mi.dx = LONG(double(cursor_original_pos.x) / 1366U * 65535);
+      inputs[num_sent].mi.dy = LONG(double(cursor_original_pos.y) / 768U * 65535);
+      inputs[num_sent].mi.mouseData = 0;
+      inputs[num_sent].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_MOVE_NOCOALESCE;
+      inputs[num_sent].mi.time = 0; // kInvalidTimestamp;
+      inputs[num_sent].mi.dwExtraInfo = GetMessageExtraInfo();
+      ++num_sent;
+      INPUT *inp = inputs;
+      if (num_sent != SendInput(num_sent, inp, sizeof(INPUT))) {
+        return true;
+      }
+      step = S_MOVBACK;
+    }
+    step = S_IDLE;
   }
   return false;
 }
@@ -447,7 +479,7 @@ XK_NAMESPACE_END
 XK_NAMESPACE_BEGIN
 
 DllEntryApp::~DllEntryApp() {
-  Release();
+  wkmod.reset();
 }
 
 DllEntryApp::DllEntryApp(HANDLE h) : handle(h), wkmod(nullptr) {
@@ -467,19 +499,11 @@ KbdModInterface* DllEntryApp::CreateModifierOnce(DWORD thread_id) {
   return wkmod.get();
 }
 
-void DllEntryApp::Release() {
-  if (wkmod) {
-    wkmod.reset();
-  }
-}
-
 int DllEntryApp::ProcessAttach(LPVOID) {
-  CreateModifierOnce();
   return 1;
 }
 
 int DllEntryApp::ProcessDetach(LPVOID) {
-  Release();
   return 1;
 }
 

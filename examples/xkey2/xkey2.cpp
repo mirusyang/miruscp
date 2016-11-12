@@ -315,8 +315,7 @@ AboutDlg::AboutDlg(wxWindow *parent)
       wxT("Copyright 2016, MiRusY. Y's Personal Toolkit")
       wxT("\n\nThis is an Alpha version.") 
       wxT("\nTo get the latest source codes, visit github.com, project: miruscp")
-      wxT("\nAny problem, contact:")
-      wxT("\n\tQQ\t1149652254\n\tBaidu\tyajiangn08")
+      wxT("\nAny problem, contact me!")
       wxT("\n(Click any-where else to CLOSE)")), 
       wxSizerFlags(1).Centre().Border(wxALL, 48));
   vbox->Add(hbox, wxSizerFlags(1).Centre());
