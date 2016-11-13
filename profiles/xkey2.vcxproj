@@ -161,6 +161,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\examples\xkey2\xkey2.cpp" />
+    <ClCompile Include="..\examples\xkey2\xkey2frame.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\examples\xkey2\wres\w.ico" />
@@ -170,6 +171,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\examples\xkey2\wres\resource.h" />
+    <ClInclude Include="..\examples\xkey2\xkey2.h" />
+    <ClInclude Include="..\examples\xkey2\xkey2frame.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

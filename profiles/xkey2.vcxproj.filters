@@ -12,6 +12,9 @@
     <ClCompile Include="..\examples\xkey2\xkey2.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\examples\xkey2\xkey2frame.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\examples\xkey2\wres\w.ico">
@@ -26,6 +29,12 @@
   <ItemGroup>
     <ClInclude Include="..\examples\xkey2\wres\resource.h">
       <Filter>win32res</Filter>
+    </ClInclude>
+    <ClInclude Include="..\examples\xkey2\xkey2.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\examples\xkey2\xkey2frame.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

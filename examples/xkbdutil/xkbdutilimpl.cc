@@ -3,7 +3,7 @@
   X-Keyboard Hooker.
 
   \file 
-  xkbdutil.cc
+  xkbdutilimpl.cc
 
   \date 
   2016/04/13
@@ -16,174 +16,22 @@
   \remarks
 
 */
-#include "xkbdutil.h"
-#ifdef XK_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <tchar.h>
-#endif
-#include <map>
-#include <memory>
-#include <mutex>
-#include <atomic>
 #include <algorithm>
 #include <future>
+#include <condition_variable>
 #include "xkit/winutilities.h"
 #include "wres/resource.h"
+#include "kmdllentry.h"
+#include "warkeymod.h"
 
 using namespace std;
-
-#ifdef XK_WINDOWS
-
-XK_NAMESPACE_BEGIN
-
-struct KbdModInterface;
-class WarkeyModifier;
-
-struct DllEntryApp {
-  typedef int (DllEntryApp::*Entry)(LPVOID);
-
-  ~DllEntryApp();
-  DllEntryApp(HANDLE h);
-  DllEntryApp();
-
-  KbdModInterface* CreateModifierOnce(DWORD);
-
-  int run(DWORD reason, LPVOID reserved) {
-    if (0 != entries.count(reason)) {
-      return (this->*entries[reason])(reserved);
-    }
-    return -1;
-  }
-
-  void set_handle(HANDLE h) {
-    handle = h;
-  }
-
-  void set_handle_once(HANDLE h) {
-    if (!handle) {
-      handle = h;
-    }
-  }
-
-  HANDLE get_handle() const {
-    return handle;
-  }
-
- private:
-  int ProcessAttach(LPVOID);
-  int ProcessDetach(LPVOID);
-  int ThreadAttach(LPVOID);
-  int ThreadDetach(LPVOID);
-
-  HANDLE handle;
-  map<DWORD, Entry> entries;
-  unique_ptr<WarkeyModifier> wkmod;
-};
-
-XK_NAMESPACE_END 
-
-static xk::DllEntryApp g_app;
 
 XK_NAMESPACE_BEGIN
 
 KbdModInterface::~KbdModInterface() {
 }
 
-class WarkeyModifier : public KbdModInterface {
-  struct SkillKeyMap {
-    WORD tarkey;    //!< target key.
-    RECT screct;    //!< screen rect to be clicked by l-mouse clicks.
-  };
-
- public:
-  static LRESULT CALLBACK _KbdLowLevelProc(int, WPARAM, LPARAM);
-  static LRESULT CALLBACK _MouseLowLevelProc(int, WPARAM, LPARAM);
-
-  static bool is_strict_vkcode(WORD vkc) {
-    return vkc > 0 && vkc < 255;
-  }
-
-  static bool is_invalid_rect(const RECT &rect) {
-    return 0 == rect.left && 0 == rect.top && 0 == rect.right && 0 == rect.bottom;
-  }
-
-  static bool is_modified_kbdinfo(LPKBDLLHOOKSTRUCT kbd) {
-    return kInvalidTimestamp == kbd->time;
-  }
-
-  ~WarkeyModifier();
-  bool Initialise();
-  void Release();
-  void Map(uint8_t, uint8_t);
-  void MapSk(uint8_t, long, long, long, long);
-  bool IsKeyMapped(uint8_t) const;
-  void Clear(uint8_t);
-  void Enable(bool);
-  bool Enabled() const;
-
-  WarkeyModifier();
-  WarkeyModifier(DWORD);
-
-  void track_assistkeys_states(LPKBDLLHOOKSTRUCT kbdinfo) {
-    if (!kbdinfo) {
-      return;
-    }
-    auto vkcode = kbdinfo->vkCode;
-    if (vkcode < VK_LSHIFT || vkcode > VK_RMENU) {
-      return;
-    }
-    auto vkindex = vkcode - VK_LSHIFT;
-    auto pressed = 0 == (LLKHF_UP & kbdinfo->flags);
-    if (pressed) {
-      // set bit 1
-      akstates_ |= (1U << vkindex);
-    } else {
-      // set bit 0
-      akstates_ &= ~(1U << vkindex);
-    }
-  }
-
-  bool is_any_assistkey_pressed() const {
-    return 0U != akstates_;
-  }
-
-  void release_hooks() {
-    if (ms_hook_) {
-      UnhookWindowsHookEx(ms_hook_);
-      ms_hook_ = nullptr;
-    }
-    if (kbd_hook_) {
-      UnhookWindowsHookEx(kbd_hook_);
-      kbd_hook_ = nullptr;
-    }
-  }
-
-  LRESULT next_llkbd_hook(int code, WPARAM wparam, LPARAM lparam) {
-    return CallNextHookEx(kbd_hook_, code, wparam, lparam);
-  }
-
-  LRESULT next_llms_hook(int code, WPARAM wparam, LPARAM lparam) {
-    return CallNextHookEx(ms_hook_, code, wparam, lparam);
-  }
-
- private:
-  bool KbdProc(WPARAM, LPARAM);
-  bool MouseProc(WPARAM, LPARAM);
-  bool UniqueKeyMapProc(WORD, WORD, LPKBDLLHOOKSTRUCT) const;
-  bool SkillKeyMapProc(const RECT&, LPKBDLLHOOKSTRUCT);
-
-  static const DWORD kInvalidTimestamp = 0xDEADBEEF;
-  static const auto kNumKeyPairs = (uint32_t)(uint8_t)-1;
-  static const WORD kKeyEaten = (WORD)-1;
-  static WarkeyModifier *inst;
-  HHOOK kbd_hook_;
-  SkillKeyMap keymap_[kNumKeyPairs];
-  mutable mutex keymap_lock_;
-  uint32_t akstates_;
-  HHOOK ms_hook_;
-  atomic<bool> enabled_;
-};
+XK_NAMESPACE_END
 
 WarkeyModifier* WarkeyModifier::inst(nullptr);
 
@@ -305,8 +153,8 @@ WarkeyModifier::WarkeyModifier(DWORD thread_id) : WarkeyModifier() {
   kbd_hook_ = SetWindowsHookEx(WH_KEYBOARD_LL, _KbdLowLevelProc, 
       (HINSTANCE)g_app.get_handle(), thread_id);
   if (!kbd_hook_) {
-    auto errstr = fmt_errmsg2(GetLastError());
-    throw RuntimeError(errstr);
+    auto errstr = xk::fmt_errmsg2(GetLastError());
+    throw xk::RuntimeError(errstr);
   }
   //ms_hook_ = SetWindowsHookEx(WH_MOUSE_LL, _MouseLowLevelProc, 
   //    (HINSTANCE)g_app.get_handle(), thread_id);
@@ -335,7 +183,7 @@ bool WarkeyModifier::KbdProc(WPARAM wparam, LPARAM lparam) {
   WORD srckey(0), tarkey(0);
   RECT screct = {0};
   {
-    std::lock_guard<std::mutex> guard(keymap_lock_);
+    lock_guard<mutex> guard(keymap_lock_);
     srckey = kbd->vkCode & 0xFF;
     tarkey = keymap_[srckey].tarkey;
     screct = keymap_[srckey].screct;
@@ -474,48 +322,7 @@ bool WarkeyModifier::SkillKeyMapProc(const RECT &screct, LPKBDLLHOOKSTRUCT kbd) 
   return false;
 }
 
-XK_NAMESPACE_END
-
-XK_NAMESPACE_BEGIN
-
-DllEntryApp::~DllEntryApp() {
-  wkmod.reset();
-}
-
-DllEntryApp::DllEntryApp(HANDLE h) : handle(h), wkmod(nullptr) {
-  entries[DLL_PROCESS_ATTACH] = &DllEntryApp::ProcessAttach;
-  entries[DLL_PROCESS_DETACH] = &DllEntryApp::ProcessDetach;
-  entries[DLL_THREAD_ATTACH] = &DllEntryApp::ThreadAttach;
-  entries[DLL_THREAD_DETACH] = &DllEntryApp::ThreadDetach;
-}
-
-DllEntryApp::DllEntryApp() : DllEntryApp(nullptr) {
-}
-
-KbdModInterface* DllEntryApp::CreateModifierOnce(DWORD thread_id) {
-  if (!wkmod) {
-    wkmod.reset(new WarkeyModifier(thread_id));
-  }
-  return wkmod.get();
-}
-
-int DllEntryApp::ProcessAttach(LPVOID) {
-  return 1;
-}
-
-int DllEntryApp::ProcessDetach(LPVOID) {
-  return 1;
-}
-
-int DllEntryApp::ThreadAttach(LPVOID) {
-  return 1;
-}
-
-int DllEntryApp::ThreadDetach(LPVOID) {
-  return 1;
-}
-
-XK_NAMESPACE_END 
+//////////////// global functions exported here ////////////////////////////////
 
 XK_CLINKAGE_BEGIN
 
@@ -524,10 +331,3 @@ XK_API xk::KbdModInterface* xkGetModifier(DWORD thread_id) {
 }
 
 XK_CLINKAGE_END 
-
-int WINAPI DllMain(HANDLE dllhandle, DWORD reason, LPVOID reserved) {
-  g_app.set_handle_once(dllhandle);
-  return g_app.run(reason, reserved);
-}
-
-#endif

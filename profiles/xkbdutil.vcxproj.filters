@@ -15,11 +15,14 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\examples\xkbdutil\xkbdutil.cc">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\xkit\xktest.cc">
       <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\examples\xkbdutil\kmdllentry.cc">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\examples\xkbdutil\xkbdutilimpl.cc">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -46,6 +49,12 @@
     </ClInclude>
     <ClInclude Include="..\xkit\memopatcher.h">
       <Filter>xkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\examples\xkbdutil\warkeymod.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\examples\xkbdutil\kmdllentry.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

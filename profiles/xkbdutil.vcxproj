@@ -156,10 +156,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\examples\xkbdutil\xkbdutil.cc" />
+    <ClCompile Include="..\examples\xkbdutil\kmdllentry.cc" />
+    <ClCompile Include="..\examples\xkbdutil\xkbdutilimpl.cc" />
     <ClCompile Include="..\xkit\xktest.cc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\examples\xkbdutil\kmdllentry.h" />
+    <ClInclude Include="..\examples\xkbdutil\warkeymod.h" />
     <ClInclude Include="..\examples\xkbdutil\wres\resource.h" />
     <ClInclude Include="..\examples\xkbdutil\xkbdutil.h" />
     <ClInclude Include="..\xkit\adjustprivileges.h" />
